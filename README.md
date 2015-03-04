@@ -49,6 +49,7 @@ If your installation destination needs escalated permissions, have a look at the
 The usual tools you need to build a PHP extension:
 * php, phpize and php-config
 * make, cc and autotools
+
 A network connection is not needed.
 
 ### Not implemented
