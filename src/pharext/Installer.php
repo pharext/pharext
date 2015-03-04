@@ -26,13 +26,12 @@ class Installer implements Command
 				CliArgs::OPTIONAL|CliArgs::SINGLE|CliArgs::NOARG],
 			["q", "quiet", "Less output",
 				CliArgs::OPTIONAL|CliArgs::SINGLE|CliArgs::NOARG],
-			["p", "prefix", "PHP installation directory", 
-				CliArgs::OPTIONAL|CliArgs::SINGLE|CliArgs::REQARG, 
-				"/usr"],
-			["n", "common-name", "PHP common program name, e.g. php5", 
+			["p", "prefix", "PHP installation prefix if phpize is not in \$PATH, e.g. /opt/php7",
+				CliArgs::OPTIONAL|CliArgs::SINGLE|CliArgs::REQARG],
+			["n", "common-name", "PHP common program name, e.g. php5 or zts-php",
 				CliArgs::OPTIONAL|CliArgs::SINGLE|CliArgs::REQARG, 
 				"php"],
-			["c", "configure", "Additional extension configure flags", 
+			["c", "configure", "Additional extension configure flags, e.g. -c --with-flag",
 				CliArgs::OPTIONAL|CliArgs::MULTI|CliArgs::REQARG],
 			["s", "sudo", "Installation might need increased privileges",
 				CliArgs::OPTIONAL|CliArgs::SINGLE|CliArgs::OPTARG,
@@ -142,12 +141,26 @@ class Installer implements Command
 	}
 	
 	/**
+	 * Construct a command from prefix common-name and suffix
+	 * @param type $suffix
+	 * @return string
+	 */
+	private function php($suffix) {
+		$cmd = $this->args["common-name"] . $suffix;
+		if (isset($this->args->prefix)) {
+			$cmd = $this->args->prefix . "/bin/" . $cmd;
+		}
+		return $cmd;
+	}
+	
+	/**
 	 * Prepares, configures, builds and installs the extension
 	 */
 	private function installPackage() {
 		$this->extract();
-		$this->exec("phpize", "{$this->args->prefix}/bin/{$this->args->{'common-name'}}ize");
-		$this->exec("configure", "./configure --with-php-config={$this->args->prefix}/bin/{$this->args->{'common-name'}}-config ". implode(" ", (array) $this->args->configure));
+		$this->exec("phpize", $this->php("ize"));
+		$this->exec("configure", "./configure --with-php-config=". $this->php("-config") . " ". 
+			implode(" ", (array) $this->args->configure));
 		$this->exec("make", "make -sj3");
 		$this->exec("install", "make -s install", true);
 	}
