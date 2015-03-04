@@ -57,6 +57,10 @@ A network connection is not needed.
 * Dependencies
 * Package description files
 
+## Download for extension maintainers
+
+Download the pharext binary of the [latest release](https://github.com/m6w6/pharext/releases/latest).
+
 ## Installation for extension maintainers
 
 	$ composer require --dev m6w6/pharext
