@@ -1,6 +1,7 @@
 .buildpath
 .project
 .settings/
+bin/pharext
 *~
 *.tmp
 *.phar
