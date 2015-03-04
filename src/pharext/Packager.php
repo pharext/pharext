@@ -174,7 +174,7 @@ class Packager implements Command
 		}
 
 		foreach (glob($pkgtemp."*") as $pkgtemp) {
-			$pkgfile = str_replace($pkguniq, "{$pkgdesc}-ext", $pkgtemp);
+			$pkgfile = str_replace($pkguniq, "{$pkgdesc}.ext", $pkgtemp);
 			$pkgname = $this->args->dest ."/". basename($pkgfile);
 			$this->info("Finalizing %s ... ", $pkgname);
 			if (!rename($pkgtemp, $pkgname)) {
