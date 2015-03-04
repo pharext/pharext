@@ -1,0 +1,11 @@
+{
+	"name": "m6w6/pharext",
+	"description": "Package PHP extensions as self-installing PHARs",
+	"keywords": ["ext", "extension", "phar", "package", "install"],
+	"type": "project",
+	"license": "BSD-2-Clause",
+	"bin": ["bin/pharext"],
+	"scripts": {
+		"pre-install-cmd": "make -s"
+	}
+}
