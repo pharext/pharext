@@ -4,8 +4,5 @@
 	"keywords": ["ext", "extension", "phar", "package", "install"],
 	"type": "project",
 	"license": "BSD-2-Clause",
-	"bin": ["bin/pharext"],
-	"scripts": {
-		"pre-install-cmd": "make -s"
-	}
+	"bin": ["bin/pharext"]
 }

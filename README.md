@@ -59,7 +59,7 @@ A network connection is not needed.
 
 ## Installation for extension maintainers
 
-	$ composer require m6w6/pharext
+	$ composer require --dev m6w6/pharext
 
 ### Prerequisites:
 
@@ -68,7 +68,7 @@ A network connection is not needed.
 
 ## Usage
 
-	$ ./bin/pharext --pecl --source ../pecl_http.git
+	$ ./vendor/bin/pharext --pecl --source ../pecl_http.git
 
 Yields:
 
@@ -79,7 +79,7 @@ Note that the PECL source can infer package name and release version from the pa
 
 Another example using `git ls-files`:
 
-	$ ./bin/pharext -v -g -s ../raphf.git --name raphf --release 1.0.5
+	$ ./vendor/bin/pharext -v -g -s ../raphf.git --name raphf --release 1.0.5
 
 Yields:
 
@@ -104,7 +104,7 @@ Yields:
 
 Command help:
 
-	$ ./bin/pharext --help
+	$ ./vendor/bin/pharext --help
 
 Yields:
 
@@ -122,3 +122,6 @@ Yields:
 	    -n|--name <arg>              Extension name (REQUIRED)
 	    -r|--release <arg>           Extension release version (REQUIRED)
 
+## Rebuilding
+
+	$ make -C vendor/m6w6/pharext
