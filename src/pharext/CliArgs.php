@@ -103,6 +103,15 @@ class CliArgs implements \ArrayAccess
 		for ($i = 0; $i < $argc; ++$i) {
 			$o = $argv[$i];
 			
+			if ($o{0} === '-' && strlen($o) > 1 && $o{1} !== '-') {
+				// multiple short opts, .e.g -vps
+				$argc += strlen($o) - 2;
+				array_splice($argv, $i, 1, array_map(function($s) {
+					return "-$s";
+				}, str_split(substr($o, 1))));
+				$o = $argv[$i];
+			}
+
 			if (!isset($this->spec[$o])) {
 				yield sprintf("Unknown option %s", $argv[$i]);
 			} elseif (!$this->optAcceptsArg($o)) {
