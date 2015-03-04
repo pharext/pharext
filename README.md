@@ -110,7 +110,7 @@ Yields:
 
 	Usage:
 	
-	  $ ./bin/pharext [-h|-v|-q|-g|-p] -s <arg> -n <arg> -r <arg> [-d <arg>]
+	  $ ./vendor/bin/pharext [-h|-v|-q|-g|-p] -s <arg> -n <arg> -r <arg> [-d <arg>]
 	
 	    -h|--help                    Display this help 
 	    -v|--verbose                 More output 
