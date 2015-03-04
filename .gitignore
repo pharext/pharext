@@ -3,3 +3,6 @@
 .settings/
 *~
 *.tmp
+*.phar
+*.phar.gz
+*.phar.bz2
