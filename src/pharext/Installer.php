@@ -120,7 +120,7 @@ class Installer implements Command
 	private function exec($name, $command, $sudo = false) {
 		$this->info("Running %s ...%s", $this->args->verbose ? $command : $name, $this->args->verbose ? "\n" : " ");
 		if ($sudo && isset($this->args->sudo)) {
-			if ($proc = proc_open(sprintf($this->args->sudo, $command)." 2>&1", [STDIN,STDOUT,STDERR], $pipes)) {
+			if (($proc = proc_open(sprintf($this->args->sudo, $command)." 2>&1", [STDIN,STDOUT,STDERR], $pipes))) {
 				$retval = proc_close($proc);
 			} else {
 				$retval = -1;
