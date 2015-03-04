@@ -30,8 +30,8 @@ class PeclSourceDir implements \IteratorAggregate, SourceDir
 	 * @see \pharext\SourceDir::__construct()
 	 */
 	public function __construct(Command $cmd, $path) {
-		$sxe = simplexml_load_file("$path/package.xml", null, 0, "http://pear.php.net/dtd/package-2.0");
-		$sxe->registerXPathNamespace("pecl", "http://pear.php.net/dtd/package-2.0");
+		$sxe = simplexml_load_file("$path/package.xml");
+		$sxe->registerXPathNamespace("pecl", $sxe->getDocNamespaces()[""]);
 		
 		$args = $cmd->getArgs();
 		if (!isset($args->name)) {
