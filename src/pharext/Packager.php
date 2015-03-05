@@ -158,13 +158,21 @@ class Packager implements Command
 			}
 			if ($this->args->gzip) {
 				$this->info("Compressing with gzip ... ");
-				$package->compress(Phar::GZ);
-				$this->info("OK\n");
+				try {
+					$package->compress(Phar::GZ);
+					$this->info("OK\n");
+				} catch (\Exception $e) {
+					$this->error("%s\n", $e->getMessage());
+				}
 			}
 			if ($this->args->bzip) {
 				$this->info("Compressing with bzip ... ");
-				$package->compress(Phar::BZ2);
-				$this->info("OK\n");
+				try {
+					$package->compress(Phar::BZ2);
+					$this->info("OK\n");
+				} catch (\Exception $e) {
+					$this->error("%s\n", $e->getMessage());
+				}
 			}
 			
 			unset($package);
