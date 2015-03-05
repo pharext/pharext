@@ -21,7 +21,7 @@ class Installer implements Command
 	public function __construct() {
 		$this->args = new CliArgs([
 			["h", "help", "Display help", 
-				CliArgs::OPTIONAL|CliArgs::SINGLE|CliArgs::NOARG],
+				CliArgs::OPTIONAL|CliArgs::SINGLE|CliArgs::NOARG|CliArgs::HALT],
 			["v", "verbose", "More output",
 				CliArgs::OPTIONAL|CliArgs::SINGLE|CliArgs::NOARG],
 			["q", "quiet", "Less output",

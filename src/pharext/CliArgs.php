@@ -89,6 +89,14 @@ class CliArgs implements \ArrayAccess
 	}
 	
 	/**
+	 * Get compiled spec
+	 * @return array
+	 */
+	public function getSpec() {
+		return $this->spec;
+	}
+	
+	/**
 	 * Parse command line arguments according to the compiled spec.
 	 * 
 	 * The Generator yields any parsing errors.
@@ -103,7 +111,7 @@ class CliArgs implements \ArrayAccess
 		for ($i = 0; $i < $argc; ++$i) {
 			$o = $argv[$i];
 			
-			if ($o{0} === '-' && strlen($o) > 1 && $o{1} !== '-') {
+			if ($o{0} === '-' && strlen($o) > 2 && $o{1} !== '-') {
 				// multiple short opts, .e.g -vps
 				$argc += strlen($o) - 2;
 				array_splice($argv, $i, 1, array_map(function($s) {
@@ -113,13 +121,13 @@ class CliArgs implements \ArrayAccess
 			}
 
 			if (!isset($this->spec[$o])) {
-				yield sprintf("Unknown option %s", $argv[$i]);
+				yield sprintf("Unknown option %s", $o);
 			} elseif (!$this->optAcceptsArg($o)) {
 				$this[$o] = true;
 			} elseif ($i+1 < $argc && !isset($this->spec[$argv[$i+1]])) {
 				$this[$o] = $argv[++$i];
-			} elseif ($this->optNeedsArg($o)) {
-				yield sprintf("Option --%s needs an argument", $this->optLongName($o));
+			} elseif ($this->optRequiresArg($o)) {
+				yield sprintf("Option --%s requires an argument", $this->optLongName($o));
 			} else {
 				// OPTARG
 				$this[$o] = $this->optDefaultArg($o);
@@ -218,13 +226,25 @@ class CliArgs implements \ArrayAccess
 	}
 
 	/**
+	 * Retrieve option's flags
+	 * @param string $o
+	 * @return int
+	 */
+	private function optFlags($o) {
+		$o = $this->opt($o);
+		if (isset($this->spec[$o])) {
+			return $this->spec[$o][3];
+		}
+		return null;
+	}
+	
+	/**
 	 * Check whether an option is flagged for halting argument processing
 	 * @param string $o
 	 * @return boolean
 	 */
 	private function optHalts($o) {
-		$o = $this->opt($o);
-		return $this->spec[$o][3] & self::HALT;
+		return $this->optFlags($o) & self::HALT;
 	}
 	
 	/**
@@ -232,9 +252,8 @@ class CliArgs implements \ArrayAccess
 	 * @param string $o
 	 * @return boolean
 	 */
-	private function optNeedsArg($o) {
-		$o = $this->opt($o);
-		return $this->spec[$o][3] & self::REQARG;
+	private function optRequiresArg($o) {
+		return $this->optFlags($o) & self::REQARG;
 	}
 	
 	/**
@@ -243,8 +262,7 @@ class CliArgs implements \ArrayAccess
 	 * @return boolean
 	 */
 	private function optAcceptsArg($o) {
-		$o = $this->opt($o);
-		return $this->spec[$o][3] & 0xf00;
+		return $this->optFlags($o) & 0xf00;
 	}
 	
 	/**
@@ -253,8 +271,7 @@ class CliArgs implements \ArrayAccess
 	 * @return boolean
 	 */
 	private function optIsMulti($o) {
-		$o = $this->opt($o);
-		return $this->spec[$o][3] & self::MULTI;
+		return $this->optFlags($o) & self::MULTI;
 	}
 	
 	/**
