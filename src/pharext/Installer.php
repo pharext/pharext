@@ -9,11 +9,7 @@ use Phar;
  */
 class Installer implements Command
 {
-	/**
-	 * Command line arguments
-	 * @var pharext\CliArgs
-	 */
-	private $args;
+	use CliCommand;
 	
 	/**
 	 * Create the command
@@ -44,23 +40,31 @@ class Installer implements Command
 	 * @see \pharext\Command::run()
 	 */
 	public function run($argc, array $argv) {
+		$errs = [];
 		$prog = array_shift($argv);
 		foreach ($this->args->parse(--$argc, $argv) as $error) {
-			$this->error("%s\n", $error);
+			$errs[] = $error;
 		}
 		
 		if ($this->args["help"]) {
-			$this->args->help($prog);
+			$this->header();
+			$this->help($prog);
 			exit;
 		}
 		
 		foreach ($this->args->validate() as $error) {
-			$this->error("%s\n", $error);
+			$errs[] = $error;
 		}
 		
-		if (isset($error)) {
+		if ($errs) {
 			if (!$this->args["quiet"]) {
-				$this->args->help($prog);
+				$this->header();
+			}
+			foreach ($errs as $err) {
+				$this->error("%s\n", $err);
+			} 
+			if (!$this->args["quiet"]) {
+				$this->help($prog);
 			}
 			exit(1);
 		}

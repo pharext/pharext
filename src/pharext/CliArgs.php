@@ -89,10 +89,18 @@ class CliArgs implements \ArrayAccess
 	}
 	
 	/**
-	 * Get compiled spec
+	 * Get original spec
 	 * @return array
 	 */
 	public function getSpec() {
+		return $this->orig;
+	}
+	
+	/**
+	 * Get compiled spec
+	 * @return array
+	 */
+	public function getCompiledSpec() {
 		return $this->spec;
 	}
 	
@@ -155,48 +163,6 @@ class CliArgs implements \ArrayAccess
 				yield sprintf("Option --%s is required", $req[1]);
 			}
 		}
-	}
-	
-	/**
-	 * Output command line help message
-	 * @param string $prog
-	 */
-	public function help($prog) {
-		printf("\nUsage:\n\n  $ %s", $prog);
-		$flags = [];
-		$required = [];
-		$optional = [];
-		foreach ($this->orig as $spec) {
-			if ($spec[3] & self::REQARG) {
-				if ($spec[3] & self::REQUIRED) {
-					$required[] = $spec;
-				} else {
-					$optional[] = $spec;
-				}
-			} else {
-				$flags[] = $spec;
-			}
-		}
-		
-		if ($flags) {
-			printf(" [-%s]", implode("|-", array_column($flags, 0)));
-		}
-		foreach ($required as $req) {
-			printf(" -%s <arg>", $req[0]);
-		}
-		if ($optional) {
-			printf(" [-%s <arg>]", implode("|-", array_column($optional, 0)));
-		} 
-		printf("\n\n");
-		foreach ($this->orig as $spec) {
-			printf("    -%s|--%s %s", $spec[0], $spec[1], ($spec[3] & self::REQARG) ? "<arg>  " : (($spec[3] & self::OPTARG) ? "[<arg>]" : "       "));
-			printf("%s%s %s", str_repeat(" ", 16-strlen($spec[1])), $spec[2], ($spec[3] & self::REQUIRED) ? "(REQUIRED)" : "");
-			if (isset($spec[4])) {
-				printf(" [%s]", $spec[4]);
-			}
-			printf("\n");
-		}
-		printf("\n");
 	}
 	
 	/**

@@ -45,7 +45,7 @@ class CliArgsTest extends \PHPUnit_Framework_TestCase
 			$spec["-".$arg[0]] = $arg;
 			$spec["--".$arg[1]] = $arg;
 		}
-		$this->assertSame($args->getSpec(), $spec);
+		$this->assertSame($args->getCompiledSpec(), $spec);
 	}
 
 	public function testParseNothing() {
@@ -125,27 +125,6 @@ class CliArgsTest extends \PHPUnit_Framework_TestCase
 			$this->assertStringMatchesFormat("%srequired-option%srequired", $error);
 		}
 		$this->assertTrue(isset($error));
-	}
-
-	public function testHelp() {
-		$this->expectOutputString(<<<EOF
-
-Usage:
-
-  $ testprog [-h|-v|-q|-s] [-p|-n|-c <arg>]
-
-    -h|--help                    Display help 
-    -v|--verbose                 More output 
-    -q|--quiet                   Less output 
-    -p|--prefix <arg>            PHP installation prefix if phpize is not in \$PATH, e.g. /opt/php7 
-    -n|--common-name <arg>       PHP common program name, e.g. php5 or zts-php  [php]
-    -c|--configure <arg>         Additional extension configure flags, e.g. -c --with-flag 
-    -s|--sudo [<arg>]            Installation might need increased privileges  [sudo -S %s]
-
-
-EOF
-		);
-		$this->args->help("testprog");
 	}
 
 }

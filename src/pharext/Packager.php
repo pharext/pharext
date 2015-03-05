@@ -9,11 +9,7 @@ use Phar;
  */
 class Packager implements Command
 {
-	/**
-	 * Command line arguments
-	 * @var pharext\CliArgs
-	 */
-	private $args;
+	use CliCommand;
 	
 	/**
 	 * Extension source directory
@@ -32,6 +28,10 @@ class Packager implements Command
 				CliArgs::OPTIONAL|CliArgs::SINGLE|CliArgs::NOARG],
 			["q", "quiet", "Less output",
 				CliArgs::OPTIONAL|CliArgs::SINGLE|CliArgs::NOARG],
+			["n", "name", "Extension name",
+				CliArgs::REQUIRED|CliArgs::SINGLE|CliArgs::REQARG],
+			["r", "release", "Extension release version",
+				CliArgs::REQUIRED|CliArgs::SINGLE|CliArgs::REQARG],
 			["s", "source", "Extension source directory",
 				CliArgs::REQUIRED|CliArgs::SINGLE|CliArgs::REQARG],
 			["g", "git", "Use `git ls-files` instead of the standard ignore filter",
@@ -41,15 +41,11 @@ class Packager implements Command
 			["d", "dest", "Destination directory",
 				CliArgs::OPTIONAL|CliArgs::SINGLE|CliArgs::REQARG,
 				"."],
-			["n", "name", "Extension name",
-				CliArgs::REQUIRED|CliArgs::SINGLE|CliArgs::REQARG],
-			["r", "release", "Extension release version",
-				CliArgs::REQUIRED|CliArgs::SINGLE|CliArgs::REQARG],
 			["z", "gzip", "Create additional PHAR compressed with gzip",
 				CliArgs::OPTIONAL|CliArgs::SINGLE|CliArgs::NOARG],
 			["Z", "bzip", "Create additional PHAR compressed with bzip",
 				CliArgs::OPTIONAL|CliArgs::SINGLE|CliArgs::NOARG],
-]);
+		]);
 	}
 	
 	/**
@@ -57,13 +53,15 @@ class Packager implements Command
 	 * @see \pharext\Command::run()
 	 */
 	public function run($argc, array $argv) {
+		$errs = [];
 		$prog = array_shift($argv);
 		foreach ($this->args->parse(--$argc, $argv) as $error) {
-			$this->error("%s\n", $error);
+			$errs[] = $error;
 		}
 		
 		if ($this->args["help"]) {
-			$this->args->help($prog);
+			$this->header();
+			$this->help($prog);
 			exit;
 		}
 		
@@ -78,12 +76,18 @@ class Packager implements Command
 		}
 		
 		foreach ($this->args->validate() as $error) {
-			$this->error("%s\n", $error);
+			$errs[] = $error;
 		}
 		
-		if (isset($error)) {
+		if ($errs) {
 			if (!$this->args["quiet"]) {
-				$this->args->help($prog);
+				$this->header();
+			}
+			foreach ($errs as $err) {
+				$this->error("%s\n", $err);
+			}
+			if (!$this->args["quiet"]) {
+				$this->help($prog);
 			}
 			exit(1);
 		}
