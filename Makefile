@@ -5,26 +5,30 @@
 all: bin/pharext
 
 bin/pharext: src/* src/pharext/*
+	@echo "Linting changed source files ... "
 	@for file in $?; do php -l $$file | sed -ne '/^No syntax errors/!p' && exit $${PIPESTATUS[0]}; done
-	phpunit tests
+	@echo "Running tests ... "
+	@phpunit tests
+	@echo "Creating bin/pharext ... "
 	php -d phar.readonly=0 build/create-phar.php
 	chmod +x $@
 
 test:
-	phpunit tests
+	@echo "Running tests ... "
+	@phpunit tests
 	
 clean:
 	rm bin/pharext*
 
 release:
-	echo
-	echo "Previous: $$(git tag --list | tail -n1)"; \
-	read -p "Version:  v" VERSION; \
-	sed -i '' -e "s/@PHAREXT_VERSION@/v$$VERSION/" src/pharext/Version.php; \
+	@echo "Previous Version: $$(git tag --list | tail -n1)"; \
+	read -p "Release Version:  v" VERSION; \
+	echo "Preparing release ... "; \
+	sed -i '' -e "s/@PHAREXT_VERSION@/$$VERSION/" src/pharext/Version.php; \
 	$(MAKE); \
 	git ci -am "release v$$VERSION"; \
 	git tag v$$VERSION; \
-	sed -i '' -e "s/v$$VERSION/@PHAREXT_VERSION@/" src/pharext/Version.php; \
+	sed -i '' -e "s/$$VERSION/@PHAREXT_VERSION@/" src/pharext/Version.php; \
 	git ci -am "back to dev"
 
 
