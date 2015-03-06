@@ -64,17 +64,21 @@ class Packager implements Command
 			$this->help($prog);
 			exit;
 		}
-		
-		if ($this->args["source"]) {
-			if ($this->args["pecl"]) {
-				$this->source = new PeclSourceDir($this, $this->args["source"]);
-			} elseif ($this->args["git"]) {
-				$this->source = new GitSourceDir($this, $this->args["source"]);
-			} elseif (realpath($this->args["source"]."/pharext_package.php")) {
-				$this->source = new PharextSourceDir($this, $this->args["source"]);
-			} else {
-				$this->source = new FilteredSourceDir($this, $this->args["source"]);
+
+		try {
+			if ($this->args["source"]) {
+				if ($this->args["pecl"]) {
+					$this->source = new PeclSourceDir($this, $this->args["source"]);
+				} elseif ($this->args["git"]) {
+					$this->source = new GitSourceDir($this, $this->args["source"]);
+				} elseif (realpath($this->args["source"]."/pharext_package.php")) {
+					$this->source = new PharextSourceDir($this, $this->args["source"]);
+				} else {
+					$this->source = new FilteredSourceDir($this, $this->args["source"]);
+				}
 			}
+		} catch (\Exception $e) {
+			$errs[] = $e->getMessage();
 		}
 		
 		foreach ($this->args->validate() as $error) {
@@ -88,6 +92,7 @@ class Packager implements Command
 			foreach ($errs as $err) {
 				$this->error("%s\n", $err);
 			}
+			printf("\n");
 			if (!$this->args["quiet"]) {
 				$this->help($prog);
 			}
@@ -119,7 +124,7 @@ class Packager implements Command
 	
 		$this->info("Creating phar %s ...%s", $pkgtemp, $this->args->verbose ? "\n" : " ");
 		try {
-			$package = new Phar($pkgtemp, 0, "ext.phar");
+			$package = new Phar($pkgtemp);
 			$package->startBuffering();
 			$package->buildFromIterator($this->source, $this->source->getBaseDir());
 			$package->buildFromIterator($this->bundle());

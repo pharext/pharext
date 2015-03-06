@@ -36,6 +36,9 @@ class PeclSourceDir implements \IteratorAggregate, SourceDir
 	 * @see \pharext\SourceDir::__construct()
 	 */
 	public function __construct(Command $cmd, $path) {
+		if (!realpath("$path/package.xml")) {
+			throw new \Exception("Missing package.xml in $path");
+		}
 		$sxe = simplexml_load_file("$path/package.xml");
 		$sxe->registerXPathNamespace("pecl", $sxe->getDocNamespaces()[""]);
 		
@@ -52,18 +55,6 @@ class PeclSourceDir implements \IteratorAggregate, SourceDir
 			foreach ($args->parse(2, ["--release", $release]) as $error) {
 				$cmd->error("%s\n", $error);
 			}
-		}
-		
-		if (($configure = $sxe->xpath("/pecl:package/pecl:extsrcrelease/pecl:configureoption"))) {
-			$this->hook = tmpfile();
-			ob_start(function($s) {
-				fwrite($this->hook, $s);
-				return null;
-			});
-			call_user_func(function() use ($configure) {
-				include __DIR__."/../pharext_install.tpl.php";
-			});
-			ob_end_flush();
 		}
 		
 		$this->cmd = $cmd;
@@ -91,15 +82,56 @@ class PeclSourceDir implements \IteratorAggregate, SourceDir
 		}
 		return trim($path, "/");
 	}
+
+	/**
+	 * Render installer hook
+	 * @param array $configure
+	 * @return string
+	 */
+	private static function loadHook($configure, $dependencies) {
+		return include __DIR__."/../pharext_install.tpl.php";
+	}
+
+	/**
+	 * Create installer hook
+	 * @return resource
+	 */
+	private function generateHooks() {
+		$dependencies = $this->sxe->xpath("/pecl:package/pecl:dependencies/pecl:required/pecl:package");
+		foreach ($dependencies as $key => $dep) {
+			if (($glob = glob("{$this->path}/{$dep->name}-*.ext.phar*"))) {
+				usort($glob, function($a, $b) {
+					return version_compare(
+						substr($a, strpos(".ext.phar", $a)),
+						substr($b, strpos(".ext.phar", $b))
+					);
+				});
+				yield realpath($this->path."/".end($glob));
+			} else {
+				unset($dependencies[$key]);
+			}
+		}
+		$configure = $this->sxe->xpath("/pecl:package/pecl:extsrcrelease/pecl:configureoption");
+		if ($configure) {
+			$fd = tmpfile();
+			ob_start(function($s) use($fd){
+				fwrite($fd, $s);
+				return null;
+			});
+			self::loadHook($configure, $dependencies);
+			ob_end_flush();
+			rewind($fd);
+			yield "pharext_install.php" =>  $fd;
+		}
+	}
 	
 	/**
 	 * Generate a list of files from the package.xml
 	 * @return Generator
 	 */
 	private function generateFiles() {
-		if ($this->hook) {
-			rewind($this->hook);
-			yield "pharext_install.php" => $this->hook;
+		foreach ($this->generateHooks() as $file => $hook) {
+			yield $file => $hook;
 		}
 		foreach ($this->sxe->xpath("//pecl:file") as $file) {
 			$path = $this->path ."/". $this->dirOf($file) ."/". $file["name"];

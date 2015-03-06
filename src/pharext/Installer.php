@@ -59,10 +59,25 @@ class Installer implements Command
 	 * @see \pharext\Command::run()
 	 */
 	public function run($argc, array $argv) {
-		if (($hook = stream_resolve_include_path("pharext_install.php"))) {
-			$callable = include $hook;
-			if (is_callable($callable)) {
-				$recv = $callable($this);
+		$this->cwd = getcwd();
+		$this->tmp = $this->tempname(basename(Phar::running(false)));
+
+		$phar = new Phar(Phar::running(false));
+		foreach ($phar as $entry) {
+			if (fnmatch("*.ext.phar*", $entry->getBaseName())) {
+				$temp = $this->newtemp($entry->getBaseName());
+				$phar->extractTo($temp, $entry->getFilename(), true);
+				$phars[$temp] = new Phar($temp."/".$entry->getFilename());
+			}
+		}
+		$phars[$this->tmp] = $phar;
+
+		foreach ($phars as $phar) {
+			if (($hook = $phar["pharext_install.php"])) {
+				$callable = include $phar["pharext_install.php"];
+				if (is_callable($callable)) {
+					$recv[] = $callable($this);
+				}
 			}
 		}
 		
@@ -96,19 +111,39 @@ class Installer implements Command
 		}
 		
 		if (isset($recv)) {
-			$recv($this);
+			foreach ($recv as $r) {
+				$r($this);
+			}
 		}
-		
-		$this->installPackage();
+		foreach ($phars as $temp => $phar) {
+			$this->installPackage($phar, $temp);
+		}
+	}
+
+	private function newtemp($prefix) {
+		$temp = $this->tempname($prefix);
+		if (!is_dir($temp)) {
+			if (!mkdir($temp, 0750, true)) {
+				$this->error(null);
+				exit(3);
+			}
+		}
+		return $temp;
 	}
 	
 	/**
 	 * Prepares, configures, builds and installs the extension
 	 */
-	private function installPackage() {
-		$this->extract();
+	private function installPackage(Phar $phar, $temp) {
+		$this->info("Installing %s ... \n", basename($phar->getAlias()));
+		try {
+			$phar->extractTo($temp, null, true);
+		} catch (\Exception $e) {
+			$this->error("%s\n", $e->getMessage());
+			exit(3);
+		}
 
-		if (!chdir($this->tmp)) {
+		if (!chdir($temp)) {
 			$this->error(null);
 			exit(4);
 		}
@@ -119,50 +154,25 @@ class Installer implements Command
 		$this->exec("make", $this->args->verbose ? "make -j3" : "make -sj3");
 		$this->exec("install", $this->args->verbose ? "make install" : "make -s install", true);
 
-		$this->cleanup();
+		$this->cleanup($temp);
 
-		$this->info("\nDon't forget to activiate the extension in your php.ini!\n");
+		$this->info("Don't forget to activiate the extension in your php.ini!\n\n");
 	}
 
 	/**
 	 * Perform any cleanups
 	 */
-	private function cleanup() {
-		if (is_dir($this->tmp)) {
+	private function cleanup($temp = null) {
+		if (!isset($temp)) {
+			$temp = $this->tmp;
+		}
+		if (is_dir($temp)) {
 			chdir($this->cwd);
-			$this->info("Cleaning up %s ...\n", $this->tmp);
-			$this->rm($this->tmp);
+			$this->info("Cleaning up %s ...\n", $temp);
+			$this->rm($temp);
 		}
 	}
 
-	/**
-	 * Extract the phar to a temporary directory
-	 */
-	private function extract() {
-		if (!$file = Phar::running(false)) {
-			$this->error("Did your run the ext.phar?\n");
-			exit(3);
-		}
-
-		$temp = $this->tempname(basename($file));
-		if (!is_dir($temp)) {
-			if (!mkdir($temp, 0750, true)) {
-				$this->error(null);
-				exit(3);
-			}
-		}
-		$this->tmp = $temp;
-		$this->cwd = getcwd();
-
-		try {
-			$phar = new Phar($file);
-			$phar->extractTo($temp, null, true);
-		} catch (\Exception $e) {
-			$this->error("%s\n", $e->getMessage());
-			exit(3);
-		}
-	}
-	
 	/**
 	 * rm -r
 	 * @param string $dir
