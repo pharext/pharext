@@ -26,12 +26,6 @@ class PeclSourceDir implements \IteratorAggregate, SourceDir
 	private $path;
 	
 	/**
-	 * Installer hook
-	 * @var string
-	 */
-	private $hook;
-	
-	/**
 	 * @inheritdoc
 	 * @see \pharext\SourceDir::__construct()
 	 */
@@ -131,6 +125,9 @@ class PeclSourceDir implements \IteratorAggregate, SourceDir
 	 */
 	private function generateFiles() {
 		foreach ($this->generateHooks() as $file => $hook) {
+			if ($this->cmd->getArgs()->verbose) {
+				$this->cmd->info("Packaging %s\n", is_string($hook) ? $hook : $file);
+			}
 			yield $file => $hook;
 		}
 		foreach ($this->sxe->xpath("//pecl:file") as $file) {

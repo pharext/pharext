@@ -120,6 +120,11 @@ class Installer implements Command
 		}
 	}
 
+	/**
+	 * Create a new temp directory
+	 * @param string $prefix
+	 * @return string
+	 */
 	private function newtemp($prefix) {
 		$temp = $this->tempname($prefix);
 		if (!is_dir($temp)) {
