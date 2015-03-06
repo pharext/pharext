@@ -26,6 +26,12 @@ class PeclSourceDir implements \IteratorAggregate, SourceDir
 	private $path;
 	
 	/**
+	 * Installer hook
+	 * @var string
+	 */
+	private $hook;
+	
+	/**
 	 * @inheritdoc
 	 * @see \pharext\SourceDir::__construct()
 	 */
@@ -46,6 +52,18 @@ class PeclSourceDir implements \IteratorAggregate, SourceDir
 			foreach ($args->parse(2, ["--release", $release]) as $error) {
 				$cmd->error("%s\n", $error);
 			}
+		}
+		
+		if (($configure = $sxe->xpath("/pecl:package/pecl:extsrcrelease/pecl:configureoption"))) {
+			$this->hook = tmpfile();
+			ob_start(function($s) {
+				fwrite($this->hook, $s);
+				return null;
+			});
+			call_user_func(function() use ($configure) {
+				include __DIR__."/../pharext_install.tpl.php";
+			});
+			ob_end_flush();
 		}
 		
 		$this->cmd = $cmd;
@@ -79,6 +97,10 @@ class PeclSourceDir implements \IteratorAggregate, SourceDir
 	 * @return Generator
 	 */
 	private function generateFiles() {
+		if ($this->hook) {
+			rewind($this->hook);
+			yield "pharext_install.php" => $this->hook;
+		}
 		foreach ($this->sxe->xpath("//pecl:file") as $file) {
 			$path = $this->path ."/". $this->dirOf($file) ."/". $file["name"];
 			if ($this->cmd->getArgs()->verbose) {

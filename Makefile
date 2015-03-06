@@ -7,8 +7,6 @@ all: bin/pharext
 bin/pharext: src/* src/pharext/*
 	@echo "Linting changed source files ... "
 	@for file in $?; do php -l $$file | sed -ne '/^No syntax errors/!p' && exit $${PIPESTATUS[0]}; done
-	@echo "Running tests ... "
-	@phpunit tests
 	@echo "Creating bin/pharext ... "
 	php -d phar.readonly=0 build/create-phar.php
 	chmod +x $@

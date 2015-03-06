@@ -70,6 +70,8 @@ class Packager implements Command
 				$this->source = new PeclSourceDir($this, $this->args["source"]);
 			} elseif ($this->args["git"]) {
 				$this->source = new GitSourceDir($this, $this->args["source"]);
+			} elseif (realpath($this->args["source"]."/pharext_package.php")) {
+				$this->source = new PharextSourceDir($this, $this->args["source"]);
 			} else {
 				$this->source = new FilteredSourceDir($this, $this->args["source"]);
 			}

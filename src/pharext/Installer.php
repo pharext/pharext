@@ -40,6 +40,13 @@ class Installer implements Command
 	 * @see \pharext\Command::run()
 	 */
 	public function run($argc, array $argv) {
+		if (($hook = stream_resolve_include_path("pharext_install.php"))) {
+			$callable = include $hook;
+			if (is_callable($callable)) {
+				$recv = $callable($this);
+			}
+		}
+		
 		$errs = [];
 		$prog = array_shift($argv);
 		foreach ($this->args->parse(--$argc, $argv) as $error) {
@@ -67,6 +74,10 @@ class Installer implements Command
 				$this->help($prog);
 			}
 			exit(1);
+		}
+		
+		if (isset($recv)) {
+			$recv($this);
 		}
 		
 		$this->installPackage();

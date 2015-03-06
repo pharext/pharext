@@ -16,7 +16,7 @@ trait CliCommand
 	 * Output pharext vX.Y.Z header
 	 */
 	function header() {
-		printf("pharext v%s (c) Michael Wallner <mike@php.net>\n", VERSION);
+		printf("pharext v%s (c) Michael Wallner <mike@php.net>\n\n", VERSION);
 	}
 	
 	/**
@@ -24,7 +24,7 @@ trait CliCommand
 	 * @param string $prog
 	 */
 	public function help($prog) {
-		printf("\nUsage:\n\n  \$ %s", $prog);
+		printf("Usage:\n\n  \$ %s", $prog);
 		
 		$flags = [];
 		$required = [];
@@ -51,9 +51,27 @@ trait CliCommand
 			printf(" [-%s <arg>]", implode("|-", array_column($optional, 0)));
 		}
 		printf("\n\n");
-		foreach ($this->args->getSpec() as $spec) {
-			printf("    -%s|--%s %s", $spec[0], $spec[1], ($spec[3] & CliArgs::REQARG) ? "<arg>  " : (($spec[3] & CliArgs::OPTARG) ? "[<arg>]" : "       "));
-			printf("%s%s%s", str_repeat(" ", 16-strlen($spec[1])), $spec[2], ($spec[3] & CliArgs::REQUIRED) ? " (REQUIRED)" : "");
+		$spc = $this->args->getSpec();
+		$max = max(array_map("strlen", array_column($spc, 1)));
+		$max += $max % 8 + 2;
+		foreach ($spc as $spec) {
+			if (isset($spec[0])) {
+				printf("    -%s|", $spec[0]);
+			} else {
+				printf("    ");
+			}
+			printf("--%s ", $spec[1]);
+			if ($spec[3] & CliArgs::REQARG) {
+				printf("<arg>  ");
+			} elseif ($spec[3] & CliArgs::OPTARG) {
+				printf("[<arg>]");
+			} else {
+				printf("       ");
+			}
+			printf("%s%s", str_repeat(" ", $max-strlen($spec[1])+3*!isset($spec[0])), $spec[2]);
+			if ($spec[3] & CliArgs::REQUIRED) {
+				printf(" (REQUIRED)");
+			}
 			if (isset($spec[4])) {
 				printf(" [%s]", $spec[4]);
 			}

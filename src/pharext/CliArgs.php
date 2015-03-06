@@ -51,7 +51,7 @@ class CliArgs implements \ArrayAccess
 	 * Original option spec
 	 * @var array
 	 */
-	private $orig;
+	private $orig = [];
 	
 	/**
 	 * Compiled spec
@@ -79,10 +79,11 @@ class CliArgs implements \ArrayAccess
 	 * @return pharext\CliArgs self
 	 */
 	public function compile(array $spec = null) {
-		$this->orig = $spec;
-		$this->spec = [];
+		$this->orig = array_merge($this->orig, $spec);
 		foreach ((array) $spec as $arg) {
-			$this->spec["-".$arg[0]] = $arg;
+			if (isset($arg[0])) { 
+				$this->spec["-".$arg[0]] = $arg;
+			}
 			$this->spec["--".$arg[1]] = $arg;
 		}
 		return $this;
@@ -296,12 +297,18 @@ class CliArgs implements \ArrayAccess
 		return $this->offsetGet($o);
 	}
 	function offsetSet($o, $v) {
+		$osn = $this->optShortName($o);
+		$oln = $this->optLongName($o);
 		if ($this->optIsMulti($o)) {
-			$this->args["-".$this->optShortName($o)][] = $v;
-			$this->args["--".$this->optLongName($o)][] = $v;
+			if (isset($osn)) {
+				$this->args["-$osn"][] = $v;
+			}
+			$this->args["--$oln"][] = $v;
 		} else {
-			$this->args["-".$this->optShortName($o)] = $v;
-			$this->args["--".$this->optLongName($o)] = $v;
+			if (isset($osn)) {
+				$this->args["-$osn"] = $v;
+			}
+			$this->args["--$oln"] = $v;
 		}
 	}
 	function __set($o, $v) {
