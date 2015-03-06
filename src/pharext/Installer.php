@@ -12,6 +12,18 @@ class Installer implements Command
 	use CliCommand;
 	
 	/**
+	 * The temporary directory we should operate in
+	 * @var string
+	 */
+	private $tmp;
+
+	/**
+	 * The directory we came from
+	 * @var string
+	 */
+	private $cwd;
+
+	/**
 	 * Create the command
 	 */
 	public function __construct() {
@@ -35,6 +47,13 @@ class Installer implements Command
 		]);
 	}
 	
+	/**
+	 * Cleanup temp directory
+	 */
+	public function __destruct() {
+		$this->cleanup();
+	}
+
 	/**
 	 * @inheritdoc
 	 * @see \pharext\Command::run()
@@ -84,33 +103,38 @@ class Installer implements Command
 	}
 	
 	/**
-	 * @inheritdoc
-	 * @see \pharext\Command::getArgs()
+	 * Prepares, configures, builds and installs the extension
 	 */
-	public function getArgs() {
-		return $this->args;
+	private function installPackage() {
+		$this->extract();
+
+		if (!chdir($this->tmp)) {
+			$this->error(null);
+			exit(4);
+		}
+
+		$this->exec("phpize", $this->php("ize"));
+		$this->exec("configure", "./configure --with-php-config=". $this->php("-config") . " ". 
+			implode(" ", (array) $this->args->configure));
+		$this->exec("make", $this->args->verbose ? "make -j3" : "make -sj3");
+		$this->exec("install", $this->args->verbose ? "make install" : "make -s install", true);
+
+		$this->cleanup();
+
+		$this->info("\nDon't forget to activiate the extension in your php.ini!\n");
 	}
-	
+
 	/**
-	 * @inheritdoc
-	 * @see \pharext\Command::info()
+	 * Perform any cleanups
 	 */
-	public function info($fmt) {
-		if (!$this->args->quiet) {
-			vprintf($fmt, array_slice(func_get_args(), 1));
+	private function cleanup() {
+		if (is_dir($this->tmp)) {
+			chdir($this->cwd);
+			$this->info("Cleaning up %s ...\n", $this->tmp);
+			$this->rm($this->tmp);
 		}
 	}
-	
-	/**
-	 * @inheritdoc
-	 * @see \pharext\Command::error()
-	 */
-	public function error($fmt) {
-		if (!$this->args->quiet) {
-			vfprintf(STDERR, "ERROR: $fmt", array_slice(func_get_args(), 1));
-		}
-	}
-	
+
 	/**
 	 * Extract the phar to a temporary directory
 	 */
@@ -119,13 +143,73 @@ class Installer implements Command
 			$this->error("Did your run the ext.phar?\n");
 			exit(3);
 		}
-		$temp = sys_get_temp_dir()."/".basename($file, ".ext.phar");
-		is_dir($temp) or mkdir($temp, 0750, true);
-		$phar = new Phar($file);
-		$phar->extractTo($temp, null, true);
-		chdir($temp);
+
+		$temp = $this->tempname(basename($file));
+		if (!is_dir($temp)) {
+			if (!mkdir($temp, 0750, true)) {
+				$this->error(null);
+				exit(3);
+			}
+		}
+		$this->tmp = $temp;
+		$this->cwd = getcwd();
+
+		try {
+			$phar = new Phar($file);
+			$phar->extractTo($temp, null, true);
+		} catch (\Exception $e) {
+			$this->error("%s\n", $e->getMessage());
+			exit(3);
+		}
 	}
 	
+	/**
+	 * rm -r
+	 * @param string $dir
+	 */
+	private function rm($dir) {
+		foreach (scandir($dir) as $entry) {
+			if ($entry === "." || $entry === "..") {
+				continue;
+			} elseif (is_dir("$dir/$entry")) {
+				$this->rm("$dir/$entry");
+			} elseif (!unlink("$dir/$entry")) {
+				$this->error(null);
+			}
+		}
+		if (!rmdir($dir)) {
+			$this->error(null);
+		}
+	}
+	
+	/**
+	 * Execute a program with escalated privileges handling interactive password prompt
+	 * @param string $command
+	 * @param string $output
+	 * @return int
+	 */
+	private function sudo($command, &$output) {
+		if (!($proc = proc_open($command, [STDIN,["pipe","w"],["pipe","w"]], $pipes))) {
+			return -1;
+		}
+		$stdout = $pipes[1];
+		$passwd = 0;
+		while (!feof($stdout)) {
+			$R = [$stdout]; $W = []; $E = [];
+			if (!stream_select($R, $W, $E, null)) {
+				continue;
+			}
+			$data = fread($stdout, 0x1000);
+			/* only check a few times */
+			if ($passwd++ < 10) {
+				if (stristr($data, "password")) {
+					printf("\n%s", $data);
+				}
+			}
+			$output .= $data;
+		}
+		return proc_close($proc);
+	}
 	/**
 	 * Execute a system command
 	 * @param string $name pretty name
@@ -135,20 +219,17 @@ class Installer implements Command
 	private function exec($name, $command, $sudo = false) {
 		$this->info("Running %s ...%s", $this->args->verbose ? $command : $name, $this->args->verbose ? "\n" : " ");
 		if ($sudo && isset($this->args->sudo)) {
-			if (($proc = proc_open(sprintf($this->args->sudo, $command)." 2>&1", [STDIN,STDOUT,STDERR], $pipes))) {
-				$retval = proc_close($proc);
-			} else {
-				$retval = -1;
-			}
+			$retval = $this->sudo(sprintf($this->args->sudo." 2>&1", $command), $output);
 		} elseif ($this->args->verbose) {
 			passthru($command ." 2>&1", $retval);
 		} else {
 			exec($command ." 2>&1", $output, $retval);
+			$output = implode("\n", $output);
 		}
 		if ($retval) {
 			$this->error("Command %s failed with (%s)\n", $command, $retval);
 			if (isset($output) && !$this->args->quiet) {
-				printf("%s\n", implode("\n", $output));
+				printf("%s\n", $output);
 			}
 			exit(2);
 		}
@@ -166,17 +247,5 @@ class Installer implements Command
 			$cmd = $this->args->prefix . "/bin/" . $cmd;
 		}
 		return $cmd;
-	}
-	
-	/**
-	 * Prepares, configures, builds and installs the extension
-	 */
-	private function installPackage() {
-		$this->extract();
-		$this->exec("phpize", $this->php("ize"));
-		$this->exec("configure", "./configure --with-php-config=". $this->php("-config") . " ". 
-			implode(" ", (array) $this->args->configure));
-		$this->exec("make", "make -sj3");
-		$this->exec("install", "make -s install", true);
 	}
 }
