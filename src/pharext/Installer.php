@@ -73,7 +73,7 @@ class Installer implements Command
 		$phars[$this->tmp] = $phar;
 
 		foreach ($phars as $phar) {
-			if (($hook = $phar["pharext_install.php"])) {
+			if (isset($phar["pharext_install.php"])) {
 				$callable = include $phar["pharext_install.php"];
 				if (is_callable($callable)) {
 					$recv[] = $callable($this);
