@@ -127,6 +127,13 @@ class CliArgs implements \ArrayAccess
 					return "-$s";
 				}, str_split(substr($o, 1))));
 				$o = $argv[$i];
+			} elseif ($o{0} === '-' && strlen($o) > 2 && $o{1} === '-' && 0 < ($eq = strpos($o, "="))) {
+				$argc++;
+				array_splice($argv, $i, 1, [
+					substr($o, 0, $eq++),
+					substr($o, $eq)
+				]);
+				$o = $argv[$i];
 			}
 
 			if (!isset($this->spec[$o])) {

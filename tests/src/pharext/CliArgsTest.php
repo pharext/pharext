@@ -112,6 +112,14 @@ class CliArgsTest extends \PHPUnit_Framework_TestCase
 		}
 		$this->assertTrue(isset($error));
 	}
+	
+	public function testLongEquals() {
+		$this->assertNull($this->args->configure);
+		foreach ($this->args->parse(1, ["--configure=--with-lib=/opt/lib"]) as $error) {
+			throw new \Exception("Unexpected parse error: $error");
+		}
+		$this->assertSame(["--with-lib=/opt/lib"], $this->args->configure);
+	}
 
 	public function testValidate() {
 		$this->args->compile([
