@@ -13,12 +13,46 @@ trait CliCommand
 	private $args;
 	
 	/**
+	 * @inheritdoc
+	 * @see \pharext\Command::getArgs()
+	 */
+	public function getArgs() {
+		return $this->args;
+	}
+
+	/**
 	 * Output pharext vX.Y.Z header
 	 */
 	function header() {
 		printf("pharext v%s (c) Michael Wallner <mike@php.net>\n\n", VERSION);
 	}
 	
+	/**
+	 * @inheritdoc
+	 * @see \pharext\Command::info()
+	 */
+	public function info($fmt) {
+		if (!$this->args->quiet) {
+			vprintf($fmt, array_slice(func_get_args(), 1));
+		}
+	}
+
+	/**
+	 * @inheritdoc
+	 * @see \pharext\Command::error()
+	 */
+	public function error($fmt) {
+		if (!$this->args->quiet) {
+			if (!isset($fmt)) {
+				$fmt = "%s\n";
+				$arg = error_get_last()["message"];
+			} else {
+				$arg = array_slice(func_get_args(), 1);
+			}
+			vfprintf(STDERR, "ERROR: $fmt", $arg);
+		}
+	}
+
 	/**
 	 * Output command line help message
 	 * @param string $prog
@@ -80,5 +114,15 @@ trait CliCommand
 		printf("\n");
 	}
 	
-	
+	/**
+	 * Create temporary file/directory name
+	 * @param string $prefix
+	 * @param string $suffix
+	 */
+	private function tempname($prefix, $suffix = null) {
+		if (!isset($suffix)) {
+			$suffix = uniqid();
+		}
+		return sprintf("%s/%s.%s", sys_get_temp_dir(), $prefix, $suffix);
+	}
 }

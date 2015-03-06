@@ -98,34 +98,6 @@ class Packager implements Command
 	}
 	
 	/**
-	 * @inheritdoc
-	 * @see \pharext\Command::getArgs()
-	 */
-	public function getArgs() {
-		return $this->args;
-	}
-	
-	/**
-	 * @inheritdoc
-	 * @see \pharext\Command::info()
-	 */
-	public function info($fmt) {
-		if (!$this->args->quiet) {
-			vprintf($fmt, array_slice(func_get_args(), 1));
-		}
-	}
-	
-	/**
-	 * @inheritdoc
-	 * @see \pharext\Command::error()
-	 */
-	public function error($fmt) {
-		if (!$this->args->quiet) {
-			vfprintf(STDERR, "ERROR: $fmt", array_slice(func_get_args(), 1));
-		}
-	}
-	
-	/**
 	 * Traverses all pharext source files to bundle
 	 * @return Generator
 	 */
@@ -142,7 +114,7 @@ class Packager implements Command
 	 */
 	private function createPackage() {
 		$pkguniq = uniqid();
-		$pkgtemp = sys_get_temp_dir() ."/{$pkguniq}.phar";
+		$pkgtemp = $this->tempname($pkguniq, "phar");
 		$pkgdesc = "{$this->args->name}-{$this->args->release}";
 	
 		$this->info("Creating phar %s ...%s", $pkgtemp, $this->args->verbose ? "\n" : " ");
@@ -156,8 +128,9 @@ class Packager implements Command
 			$package->setStub("#!/usr/bin/php -dphar.readonly=1\n".$package->getStub());
 			$package->stopBuffering();
 			
-			chmod($pkgtemp, 0770);
-			if ($this->args->verbose) {
+			if (!chmod($pkgtemp, 0777)) {
+				$this->error(null);
+			} elseif ($this->args->verbose) {
 				$this->info("Created executable phar %s\n", $pkgtemp);
 			} else {
 				$this->info("OK\n");
@@ -192,7 +165,7 @@ class Packager implements Command
 			$pkgname = $this->args->dest ."/". basename($pkgfile);
 			$this->info("Finalizing %s ... ", $pkgname);
 			if (!rename($pkgtemp, $pkgname)) {
-				$this->error("%s\n", error_get_last()["message"]);
+				$this->error(null);
 				exit(5);
 			}
 			$this->info("OK\n");
