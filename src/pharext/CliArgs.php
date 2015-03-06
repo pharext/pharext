@@ -79,7 +79,7 @@ class CliArgs implements \ArrayAccess
 	 * @return pharext\CliArgs self
 	 */
 	public function compile(array $spec = null) {
-		$this->orig = array_merge($this->orig, $spec);
+		$this->orig = array_merge($this->orig, (array) $spec);
 		foreach ((array) $spec as $arg) {
 			if (isset($arg[0])) { 
 				$this->spec["-".$arg[0]] = $arg;
