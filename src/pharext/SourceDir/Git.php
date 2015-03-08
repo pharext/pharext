@@ -46,7 +46,7 @@ class Git implements \IteratorAggregate, SourceDir
 	private function generateFiles() {
 		$pwd = getcwd();
 		chdir($this->path);
-		if (($pipe = popen("git ls-files", "r"))) {
+		if (($pipe = popen("git ls-tree -r --name-only HEAD", "r"))) {
 			while (!feof($pipe)) {
 				if (strlen($file = trim(fgets($pipe)))) {
 					if ($this->cmd->getArgs()->verbose) {
