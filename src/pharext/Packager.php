@@ -24,6 +24,8 @@ class Packager implements Command
 		$this->args = new CliArgs([
 			["h", "help", "Display this help",
 				CliArgs::OPTIONAL|CliArgs::SINGLE|CliArgs::NOARG|CliArgs::HALT],
+			[null, "signature", "Dump signature",
+				CliArgs::OPTIONAL|CliArgs::SINGLE|CliArgs::NOARG|CliArgs::HALT],
 			["v", "verbose", "More output",
 				CliArgs::OPTIONAL|CliArgs::SINGLE|CliArgs::NOARG],
 			["q", "quiet", "Less output",
@@ -45,6 +47,8 @@ class Packager implements Command
 				CliArgs::OPTIONAL|CliArgs::SINGLE|CliArgs::NOARG],
 			["Z", "bzip", "Create additional PHAR compressed with bzip",
 				CliArgs::OPTIONAL|CliArgs::SINGLE|CliArgs::NOARG],
+			["S", "sign", "Sign the *.ext.phar with a private key",
+				CliArgs::OPTIONAL|CliArgs::SINGLE|CliArgs::REQARG]
 		]);
 	}
 	
@@ -63,6 +67,9 @@ class Packager implements Command
 			$this->header();
 			$this->help($prog);
 			exit;
+		}
+		if ($this->args["signature"]) {
+			exit($this->signature($prog));
 		}
 
 		try {
@@ -101,7 +108,19 @@ class Packager implements Command
 		
 		$this->createPackage();
 	}
-	
+
+	function signature($prog) {
+		try {
+			$sig = (new Phar(Phar::running(false)))->getSignature();
+			printf("%s signature of %s\n%s", $sig["hash_type"], $prog, 
+				chunk_split($sig["hash"], 64, "\n"));
+			return 0;
+		} catch (\Exception $e) {
+			$this->error("%s\n", $e->getMessage());
+			return 2;
+		}
+	}
+
 	/**
 	 * Traverses all pharext source files to bundle
 	 * @return Generator
@@ -114,6 +133,20 @@ class Packager implements Command
 		}
 	}
 	
+	private function askpass($prompt = "Password:") {
+		system("stty -echo", $retval);
+		if ($retval) {
+			$this->error("Could not disable echo on the terminal\n");
+		}
+		printf("%s ", $prompt);
+		$pass = fgets(STDIN, 1024);
+		system("stty echo");
+		if (substr($pass, -1) == "\n") {
+			$pass = substr($pass, 0, -1);
+		}
+		return $pass;
+	}
+
 	/**
 	 * Creates the extension phar
 	 */
@@ -125,6 +158,13 @@ class Packager implements Command
 		$this->info("Creating phar %s ...%s", $pkgtemp, $this->args->verbose ? "\n" : " ");
 		try {
 			$package = new Phar($pkgtemp);
+			
+			if ($this->args->sign) {
+				$this->info("\nUsing private key to sign phar ... \n");
+				$privkey = new Openssl\PrivateKey(realpath($this->args->sign), $this->askpass());
+				$privkey->sign($package);
+			}
+
 			$package->startBuffering();
 			$package->buildFromIterator($this->source, $this->source->getBaseDir());
 			$package->buildFromIterator($this->bundle());
@@ -132,7 +172,7 @@ class Packager implements Command
 			$package->setDefaultStub("pharext_installer.php");
 			$package->setStub("#!/usr/bin/php -dphar.readonly=1\n".$package->getStub());
 			$package->stopBuffering();
-			
+
 			if (!chmod($pkgtemp, 0777)) {
 				$this->error(null);
 			} elseif ($this->args->verbose) {
@@ -160,7 +200,7 @@ class Packager implements Command
 					$this->error("%s\n", $e->getMessage());
 				}
 			}
-			
+
 			unset($package);
 		} catch (\Exception $e) {
 			$this->error("%s\n", $e->getMessage());
@@ -176,6 +216,16 @@ class Packager implements Command
 				exit(5);
 			}
 			$this->info("OK\n");
+			if ($this->args->sign && isset($privkey)) {
+				$keyname = $this->args->dest ."/". basename($pkgfile) . ".pubkey";
+				$this->info("Public Key %s ... ", $keyname);
+				try {
+					$privkey->exportPublicKey($keyname);
+					$this->info("OK\n");
+				} catch (\Exception $e) {
+					$this->error("%s", $e->getMessage());
+				}
+			}
 		} 
 	}
 }

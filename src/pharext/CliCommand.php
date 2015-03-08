@@ -125,4 +125,39 @@ trait CliCommand
 		}
 		return sprintf("%s/%s.%s", sys_get_temp_dir(), $prefix, $suffix);
 	}
+
+	/**
+	 * Create a new temp directory
+	 * @param string $prefix
+	 * @return string
+	 */
+	private function newtemp($prefix) {
+		$temp = $this->tempname($prefix);
+		if (!is_dir($temp)) {
+			if (!mkdir($temp, 0700, true)) {
+				$this->error(null);
+				exit(3);
+			}
+		}
+		return $temp;
+	}
+
+	/**
+	 * rm -r
+	 * @param string $dir
+	 */
+	private function rm($dir) {
+		foreach (scandir($dir) as $entry) {
+			if ($entry === "." || $entry === "..") {
+				continue;
+			} elseif (is_dir("$dir/$entry")) {
+				$this->rm("$dir/$entry");
+			} elseif (!unlink("$dir/$entry")) {
+				$this->error(null);
+			}
+		}
+		if (!rmdir($dir)) {
+			$this->error(null);
+		}
+	}
 }

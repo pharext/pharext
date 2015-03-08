@@ -35,7 +35,7 @@ class FilteredSourceDirTest extends \PHPUnit_Framework_TestCase
 			return $fi->getRealpath();
 		}, $filtered);
 		sort($fltfiles);
-		
+		$this->assertEquals(array(), array_diff($gitfiles, $fltfiles));
 		$this->assertEquals($gitfiles, $fltfiles);
 	}
 }
