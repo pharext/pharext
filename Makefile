@@ -4,7 +4,7 @@
 
 all: bin/pharext
 
-bin/pharext: src/* src/pharext/*
+bin/pharext: src/* src/pharext/* src/pharext/*/*
 	@echo "Linting changed source files ... "
 	@for file in $?; do php -l $$file | sed -ne '/^No syntax errors/!p' && exit $${PIPESTATUS[0]}; done
 	@echo "Creating bin/pharext ... "

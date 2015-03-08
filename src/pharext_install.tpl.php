@@ -5,6 +5,8 @@
  */
 namespace pharext;
 
+use pharext\Cli\Args as CliArgs;
+
 return function(Installer $installer) {
 	$args = $installer->getArgs();
 	<?php foreach ($configure as $cfg) : ?>

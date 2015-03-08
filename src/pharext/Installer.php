@@ -3,6 +3,8 @@
 namespace pharext;
 
 use Phar;
+use pharext\Cli\Args as CliArgs;
+use pharext\Cli\Command as CliCommand;
 
 /**
  * The extension install command executed by the extension phar

@@ -1,11 +1,11 @@
 <?php
 
-namespace pharext;
+namespace pharext\Cli;
 
 /**
  * Command line arguments
  */
-class CliArgs implements \ArrayAccess
+class Args implements \ArrayAccess
 {
 	/**
 	 * Optional option

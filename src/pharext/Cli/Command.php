@@ -1,10 +1,12 @@
 <?php
 
-namespace pharext;
+namespace pharext\Cli;
 
-require_once __DIR__."/Version.php";
+use pharext\Cli\Args as CliArgs;
 
-trait CliCommand
+require_once "pharext/Version.php";
+
+trait Command
 {
 	/**
 	 * Command line arguments
@@ -24,7 +26,8 @@ trait CliCommand
 	 * Output pharext vX.Y.Z header
 	 */
 	function header() {
-		printf("pharext v%s (c) Michael Wallner <mike@php.net>\n\n", VERSION);
+		printf("pharext v%s (c) Michael Wallner <mike@php.net>\n\n", 
+			\pharext\VERSION);
 	}
 	
 	/**

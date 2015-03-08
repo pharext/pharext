@@ -1,11 +1,14 @@
 <?php
 
-namespace pharext;
+namespace pharext\SourceDir;
+
+use pharext\Command;
+use pharext\SourceDir;
 
 /**
  * A PECL extension source directory containing a v2 package.xml
  */
-class PeclSourceDir implements \IteratorAggregate, SourceDir
+class Pecl implements \IteratorAggregate, SourceDir
 {
 	/**
 	 * The Packager command
@@ -88,7 +91,7 @@ class PeclSourceDir implements \IteratorAggregate, SourceDir
 
 	/**
 	 * Create installer hook
-	 * @return resource
+	 * @return \Generator
 	 */
 	private function generateHooks() {
 		$dependencies = $this->sxe->xpath("/pecl:package/pecl:dependencies/pecl:required/pecl:package");
@@ -115,7 +118,7 @@ class PeclSourceDir implements \IteratorAggregate, SourceDir
 			self::loadHook($configure, $dependencies);
 			ob_end_flush();
 			rewind($fd);
-			yield "pharext_install.php" =>  $fd;
+			yield "pharext_install.php" => $fd;
 		}
 	}
 	

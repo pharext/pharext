@@ -1,11 +1,14 @@
 <?php
 
-namespace pharext;
+namespace pharext\SourceDir;
+
+use pharext\Command;
+use pharext\SourceDir;
 
 /**
  * Extension source directory which is a git repo
  */
-class GitSourceDir implements \IteratorAggregate, SourceDir
+class Git implements \IteratorAggregate, SourceDir
 {
 	/**
 	 * The Packager command

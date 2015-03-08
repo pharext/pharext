@@ -3,6 +3,8 @@
 namespace pharext;
 
 use Phar;
+use pharext\Cli\Args as CliArgs;
+use pharext\Cli\Command as CliCommand;
 
 /**
  * The extension packaging command executed by bin/pharext
@@ -24,8 +26,6 @@ class Packager implements Command
 		$this->args = new CliArgs([
 			["h", "help", "Display this help",
 				CliArgs::OPTIONAL|CliArgs::SINGLE|CliArgs::NOARG|CliArgs::HALT],
-			[null, "signature", "Dump signature",
-				CliArgs::OPTIONAL|CliArgs::SINGLE|CliArgs::NOARG|CliArgs::HALT],
 			["v", "verbose", "More output",
 				CliArgs::OPTIONAL|CliArgs::SINGLE|CliArgs::NOARG],
 			["q", "quiet", "Less output",
@@ -36,9 +36,9 @@ class Packager implements Command
 				CliArgs::REQUIRED|CliArgs::SINGLE|CliArgs::REQARG],
 			["s", "source", "Extension source directory",
 				CliArgs::REQUIRED|CliArgs::SINGLE|CliArgs::REQARG],
-			["g", "git", "Use `git ls-files` instead of the standard ignore filter",
+			["g", "git", "Use `git ls-tree` to determine file list",
 				CliArgs::OPTIONAL|CliArgs::SINGLE|CliArgs::NOARG],
-			["p", "pecl", "Use PECL package.xml instead of the standard ignore filter",
+			["p", "pecl", "Use PECL package.xml to determine file list, name and release",
 				CliArgs::OPTIONAL|CliArgs::SINGLE|CliArgs::NOARG],
 			["d", "dest", "Destination directory",
 				CliArgs::OPTIONAL|CliArgs::SINGLE|CliArgs::REQARG,
@@ -47,8 +47,10 @@ class Packager implements Command
 				CliArgs::OPTIONAL|CliArgs::SINGLE|CliArgs::NOARG],
 			["Z", "bzip", "Create additional PHAR compressed with bzip",
 				CliArgs::OPTIONAL|CliArgs::SINGLE|CliArgs::NOARG],
-			["S", "sign", "Sign the *.ext.phar with a private key",
-				CliArgs::OPTIONAL|CliArgs::SINGLE|CliArgs::REQARG]
+			["S", "sign", "Sign the PHAR with a private key",
+				CliArgs::OPTIONAL|CliArgs::SINGLE|CliArgs::REQARG],
+			[null, "signature", "Dump signature",
+				CliArgs::OPTIONAL|CliArgs::SINGLE|CliArgs::NOARG|CliArgs::HALT],
 		]);
 	}
 	
@@ -75,13 +77,11 @@ class Packager implements Command
 		try {
 			if ($this->args["source"]) {
 				if ($this->args["pecl"]) {
-					$this->source = new PeclSourceDir($this, $this->args["source"]);
+					$this->source = new SourceDir\Pecl($this, $this->args["source"]);
 				} elseif ($this->args["git"]) {
-					$this->source = new GitSourceDir($this, $this->args["source"]);
-				} elseif (realpath($this->args["source"]."/pharext_package.php")) {
-					$this->source = new PharextSourceDir($this, $this->args["source"]);
+					$this->source = new SourceDir\Git($this, $this->args["source"]);
 				} else {
-					$this->source = new FilteredSourceDir($this, $this->args["source"]);
+					$this->source = new SourceDir\Pharext($this, $this->args["source"]);
 				}
 			}
 		} catch (\Exception $e) {
@@ -126,10 +126,11 @@ class Packager implements Command
 	 * @return Generator
 	 */
 	private function bundle() {
-		foreach (scandir(__DIR__) as $entry) {
-			if (fnmatch("*.php", $entry)) {
-				yield "pharext/$entry" => __DIR__."/$entry";
-			}
+		$rdi = new \RecursiveDirectoryIterator(__DIR__);
+		$rii = new \RecursiveIteratorIterator($rdi);
+		for ($rii->rewind(); $rii->valid(); $rii->next()) {
+			yield "pharext/". $rii->getSubPathname() => $rii->key();
+			
 		}
 	}
 	
@@ -167,7 +168,7 @@ class Packager implements Command
 
 			$package->startBuffering();
 			$package->buildFromIterator($this->source, $this->source->getBaseDir());
-			$package->buildFromIterator($this->bundle());
+			$package->buildFromIterator($this->bundle(__DIR__));
 			$package->addFile(__DIR__."/../pharext_installer.php", "pharext_installer.php");
 			$package->setDefaultStub("pharext_installer.php");
 			$package->setStub("#!/usr/bin/php -dphar.readonly=1\n".$package->getStub());
