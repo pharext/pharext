@@ -143,7 +143,8 @@ class Packager implements Command
 			if ($this->args->gzip) {
 				$this->info("Compressing with gzip ... ");
 				try {
-					$package->compress(Phar::GZ);
+					$package->compress(Phar::GZ)
+						->setDefaultStub("pharext_installer.php");
 					$this->info("OK\n");
 				} catch (\Exception $e) {
 					$this->error("%s\n", $e->getMessage());
@@ -152,7 +153,8 @@ class Packager implements Command
 			if ($this->args->bzip) {
 				$this->info("Compressing with bzip ... ");
 				try {
-					$package->compress(Phar::BZ2);
+					$package->compress(Phar::BZ2)
+						->setDefaultStub("pharext_installer.php");
 					$this->info("OK\n");
 				} catch (\Exception $e) {
 					$this->error("%s\n", $e->getMessage());
