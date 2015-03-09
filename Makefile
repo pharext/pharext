@@ -22,12 +22,11 @@ release:
 	@echo "Previous Version: $$(git tag --list | tail -n1)"; \
 	read -p "Release Version:  v" VERSION; \
 	echo "Preparing release ... "; \
-	sed -i '' -e "s/@PHAREXT_VERSION@/$$VERSION/" src/pharext/Version.php; \
-	$(MAKE); \
-	git ci -am "release v$$VERSION"; \
-	git tag v$$VERSION; \
-	sed -i '' -e "s/$$VERSION/@PHAREXT_VERSION@/" src/pharext/Version.php; \
+	sed -i '' -e "s/@PHAREXT_VERSION@/$$VERSION/" src/pharext/Version.php && \
+	$(MAKE) -B SIGN=1 && \
+	git ci -am "release v$$VERSION" && \
+	git tag v$$VERSION && \
+	sed -i '' -e "s/$$VERSION/@PHAREXT_VERSION@/" src/pharext/Version.php && \
 	git ci -am "back to dev"
-
 
 .PHONY: all clean test release
