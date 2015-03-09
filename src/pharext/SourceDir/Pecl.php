@@ -86,7 +86,7 @@ class Pecl implements \IteratorAggregate, SourceDir
 	 * @return string
 	 */
 	private static function loadHook($configure, $dependencies) {
-		return include __DIR__."/../pharext_install.tpl.php";
+		return include __DIR__."/../../pharext_install.tpl.php";
 	}
 
 	/**
