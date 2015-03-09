@@ -47,15 +47,17 @@ class Git implements \IteratorAggregate, SourceDir
 		$pwd = getcwd();
 		chdir($this->path);
 		if (($pipe = popen("git ls-tree -r --name-only HEAD", "r"))) {
+			$path = realpath($this->path);
 			while (!feof($pipe)) {
 				if (strlen($file = trim(fgets($pipe)))) {
 					if ($this->cmd->getArgs()->verbose) {
 						$this->cmd->info("Packaging %s\n", $file);
 					}
-					if (!($realpath = realpath($file))) {
-						$this->cmd->error("File %s does not exist\n", $file);
+					/* there may be symlinks, so no realpath here */
+					if (!file_exists("$path/$file")) {
+						$this->cmd->error("File %s does not exist in %s\n", $file, $path);
 					}
-					yield $realpath;
+					yield "$path/$file";
 				}
 			}
 			pclose($pipe);
