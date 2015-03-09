@@ -83,7 +83,7 @@ A network connection is not needed.
 
 Download the pharext binary of the [latest release](https://github.com/m6w6/pharext/releases/latest).
 
-Be aware that you need the public key to run official `pharext` releases.
+Be aware that you need the [public key](https://github.com/m6w6/pharext/wiki/Public-key) to run official `pharext` releases.
 
 	-----BEGIN PUBLIC KEY-----
 	MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA5x9bwisjDBDV/bwDiju2
