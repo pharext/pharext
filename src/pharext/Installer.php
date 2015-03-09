@@ -268,6 +268,9 @@ class Installer implements Command
 		return $cmd;
 	}
 
+	/**
+	 * Activate extension in php.ini
+	 */
 	private function activate() {
 		if ($this->args->ini) {
 			$files = [realpath($this->args->ini)];
