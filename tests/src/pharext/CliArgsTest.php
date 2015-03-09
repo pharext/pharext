@@ -4,6 +4,8 @@ namespace pharext;
 
 require __DIR__."/../../autoload.php";
 
+use pharext\Cli\Args as CliArgs;
+
 class CliArgsTest extends \PHPUnit_Framework_TestCase
 {
 	/**

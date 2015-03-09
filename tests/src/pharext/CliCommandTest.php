@@ -2,6 +2,11 @@
 
 namespace pharext;
 
+require __DIR__."/../../autoload.php";
+
+use pharext\Cli\Args as CliArgs;
+use pharext\Cli\Command as CliCommand;
+
 class CliCommandTest extends \PHPUnit_Framework_TestCase
 {
 	use CliCommand;

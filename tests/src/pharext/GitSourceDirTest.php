@@ -4,6 +4,9 @@ namespace pharext;
 
 require_once __DIR__."/../../autoload.php";
 
+use pharext\Cli\Args as CliArgs;
+use pharext\Cli\Command as CliCommand;
+
 class Cmd implements Command
 {
 	use CliCommand;
@@ -22,7 +25,7 @@ class GitSourceDirTest extends \PHPUnit_Framework_TestCase
 	protected $source;
 	
 	protected function setUp() {
-		$this->source = new GitSourceDir(new Cmd, ".");
+		$this->source = new SourceDir\Git(new Cmd, ".");
 	}
 	
 	public function testGetBaseDir() {
@@ -30,7 +33,7 @@ class GitSourceDirTest extends \PHPUnit_Framework_TestCase
 	}
 	
 	public function testIterator() {
-		$git_files = `git ls-files | xargs -I{} -n1 echo \$(pwd)/{}`;
+		$git_files = `git ls-tree --name-only -r HEAD | xargs -I{} -n1 echo \$(pwd)/{}`;
 		$dir_files = implode("\n", iterator_to_array($this->source->getIterator()))."\n";
 		$this->assertSame($git_files, $dir_files);
 	}
