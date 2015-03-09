@@ -45,7 +45,9 @@ class Installer implements Command
 				CliArgs::OPTIONAL|CliArgs::MULTI|CliArgs::REQARG],
 			["s", "sudo", "Installation might need increased privileges",
 				CliArgs::OPTIONAL|CliArgs::SINGLE|CliArgs::OPTARG,
-				"sudo -S %s"]
+				"sudo -S %s"],
+			["i", "ini", "Activate in this php.ini instead of loaded default php.ini",
+				CliArgs::OPTIONAL|CliArgs::SINGLE|CliArgs::REQARG],
 		]);
 	}
 	
@@ -139,15 +141,35 @@ class Installer implements Command
 			exit(4);
 		}
 
+		// phpize
 		$this->exec("phpize", $this->php("ize"));
-		$this->exec("configure", "./configure --with-php-config=". $this->php("-config") . " ". 
-			implode(" ", (array) $this->args->configure));
-		$this->exec("make", $this->args->verbose ? "make -j3" : "make -sj3");
-		$this->exec("install", $this->args->verbose ? "make install" : "make -s install", true);
 
+		// configure
+		$args = ["--with-php-config=". $this->php("-config")];
+		if ($this->args->configure) {
+			$args = array_merge($args, $this->args->configure);
+		}
+		$this->exec("configure", "./configure", $args);
+
+		// make
+		if ($this->args->verbose) {
+			$this->exec("make", "make", ["-j3"]);
+		} else {
+			$this->exec("make", "make", ["-j3", "-s"]);
+		}
+
+		// install
+		if ($this->args->verbose) {
+			$this->exec("install", "make", ["install"], true);
+		} else {
+			$this->exec("install", "make", ["install", "-s"], true);
+		}
+
+		// activate
+		$this->activate();
+
+		// cleanup
 		$this->cleanup($temp);
-
-		$this->info("Don't forget to activiate the extension in your php.ini!\n\n");
 	}
 
 	/**
@@ -195,19 +217,31 @@ class Installer implements Command
 	/**
 	 * Execute a system command
 	 * @param string $name pretty name
-	 * @param string $command full command
+	 * @param string $command command
+	 * @param array $args command arguments
 	 * @param bool $sudo whether the command may need escalated privileges
 	 */
-	private function exec($name, $command, $sudo = false) {
-		$this->info("Running %s ...%s", $this->args->verbose ? $command : $name, $this->args->verbose ? "\n" : " ");
-		if ($sudo && isset($this->args->sudo)) {
-			$retval = $this->sudo(sprintf($this->args->sudo." 2>&1", $command), $output);
-		} elseif ($this->args->verbose) {
-			passthru($command ." 2>&1", $retval);
+	private function exec($name, $command, array $args = null, $sudo = false) {
+		$exec = escapeshellcmd($command);
+		if ($args) {
+			$exec .= " ". implode(" ", array_map("escapeshellarg", (array) $args));
+		}
+
+		if ($this->args->verbose) {
+			$this->info("Running %s ...\n", $exec);
 		} else {
-			exec($command ." 2>&1", $output, $retval);
+			$this->info("Running %s ... ", $name);
+		}
+
+		if ($sudo && isset($this->args->sudo)) {
+			$retval = $this->sudo(sprintf($this->args->sudo." 2>&1", $exec), $output);
+		} elseif ($this->args->verbose) {
+			passthru($exec ." 2>&1", $retval);
+		} else {
+			exec($exec ." 2>&1", $output, $retval);
 			$output = implode("\n", $output);
 		}
+
 		if ($retval) {
 			$this->error("Command %s failed with (%s)\n", $command, $retval);
 			if (isset($output) && !$this->args->quiet) {
@@ -215,7 +249,10 @@ class Installer implements Command
 			}
 			exit(2);
 		}
-		$this->info("OK\n");
+		if (!$this->args->verbose) {
+			// we already have a bunch of output
+			$this->info("OK\n");
+		}
 	}
 	
 	/**
@@ -229,5 +266,46 @@ class Installer implements Command
 			$cmd = $this->args->prefix . "/bin/" . $cmd;
 		}
 		return $cmd;
+	}
+
+	private function activate() {
+		if ($this->args->ini) {
+			$files = [realpath($this->args->ini)];
+		} else {
+			$files = array_filter(array_map("trim", explode(",", php_ini_scanned_files())));
+			$files[] = php_ini_loaded_file();
+		}
+
+		$extension = basename(current(glob("modules/*.so")));
+		$pattern = preg_quote($extension);
+
+		foreach ($files as $index => $file) {
+			$temp = new Tempfile("phpini");
+			foreach (file($file) as $line) {
+				if (preg_match("/^\s*extension\s*=\s*[\"']?{$pattern}[\"']?\s*(;.*)?\$/", $line)) {
+					// already there
+					$this->info("Extension already activated\n");
+					return;
+				}
+				fwrite($temp->getStream(), $line);
+			}
+		}
+
+		// not found, add extension line to the last process file
+		if (isset($temp, $file)) {
+			fprintf($temp->getStream(), "extension=%s\n", $extension);
+			$temp->closeStream();
+
+			$path = $temp->getPathname();
+			$stat = stat($file);
+
+			$ugid = sprintf("%d:%d", $stat["uid"], $stat["gid"]);
+			$this->exec("INI owner transfer", "chown", [$ugid, $path], true);
+			
+			$perm = decoct($stat["mode"] & 0777);
+			$this->exec("INI permission transfer", "chmod", [$perm, $path], true);
+			
+			$this->exec("INI activation", "mv", [$path, $file], true);
+		}
 	}
 }
