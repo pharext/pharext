@@ -159,7 +159,7 @@ class Packager implements Command
 		$this->info("Creating phar %s ...%s", $pkgtemp, $this->args->verbose ? "\n" : " ");
 		try {
 			$package = new Phar($pkgtemp);
-			
+
 			if ($this->args->sign) {
 				$this->info("\nUsing private key to sign phar ... \n");
 				$privkey = new Openssl\PrivateKey(realpath($this->args->sign), $this->askpass());

@@ -5,10 +5,16 @@ namespace pharext\Openssl;
 class PrivateKey
 {
 	/**
-	 * OpenSSL pkey resource
-	 * @var resource
+	 * Private key
+	 * @var string
 	 */
 	private $key;
+	
+	/**
+	 * Public key
+	 * @var string
+	 */
+	private $pub;
 
 	/**
 	 * Read a private key
@@ -17,10 +23,16 @@ class PrivateKey
 	 * @throws \Exception
 	 */
 	function __construct($file, $password) {
-		$this->key = openssl_pkey_get_private("file://$file", $password);
-		if (!is_resource($this->key)) {
+		/* there appears to be a bug with refcount handling of this
+		 * resource; when the resource is stored as property, it cannot be
+		 * "coerced to a private key" on openssl_sign() alter in another method
+		 */
+		$key = openssl_pkey_get_private("file://$file", $password);
+		if (!is_resource($key)) {
 			throw new \Exception("Could not load private key");
 		}
+		openssl_pkey_export($key, $this->key);
+		$this->pub = openssl_pkey_get_details($key)["key"];
 	}
 
 	/**
@@ -37,9 +49,7 @@ class PrivateKey
 	 * @throws \Exception
 	 */
 	function exportPublicKey($file) {
-		if (!file_put_contents("$file.tmp", openssl_pkey_get_details($this->key)["key"])
-		||	!rename("$file.tmp", $file)
-		) {
+		if (!file_put_contents("$file.tmp", $this->pub) || !rename("$file.tmp", $file)) {
 			throw new \Exception(error_get_last()["message"]);
 		}
 	}
