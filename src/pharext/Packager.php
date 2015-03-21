@@ -3,6 +3,7 @@
 namespace pharext;
 
 use Phar;
+use PharData;
 use pharext\Cli\Args as CliArgs;
 use pharext\Cli\Command as CliCommand;
 
@@ -18,6 +19,12 @@ class Packager implements Command
 	 * @var pharext\SourceDir
 	 */
 	private $source;
+	
+	/**
+	 * Cleanups
+	 * @var array
+	 */
+	private $cleanup = [];
 	
 	/**
 	 * Create the command
@@ -55,6 +62,19 @@ class Packager implements Command
 	}
 	
 	/**
+	 * Perform cleaniup
+	 */
+	function __destruct() {
+		foreach ($this->cleanup as $cleanup) {
+			if (is_dir($cleanup)) {
+				$this->rm($cleanup);
+			} else {
+				unlink($cleanup);
+			}
+		}
+	}
+	
+	/**
 	 * @inheritdoc
 	 * @see \pharext\Command::run()
 	 */
@@ -76,12 +96,13 @@ class Packager implements Command
 
 		try {
 			if ($this->args["source"]) {
+				$source = $this->localize($this->args["source"]);
 				if ($this->args["pecl"]) {
-					$this->source = new SourceDir\Pecl($this, $this->args["source"]);
+					$this->source = new SourceDir\Pecl($this, $source);
 				} elseif ($this->args["git"]) {
-					$this->source = new SourceDir\Git($this, $this->args["source"]);
+					$this->source = new SourceDir\Git($this, $source);
 				} else {
-					$this->source = new SourceDir\Pharext($this, $this->args["source"]);
+					$this->source = new SourceDir\Pharext($this, $source);
 				}
 			}
 		} catch (\Exception $e) {
@@ -109,6 +130,11 @@ class Packager implements Command
 		$this->createPackage();
 	}
 
+	/**
+	 * Dump program signature
+	 * @param string $prog
+	 * @return int exit code
+	 */
 	function signature($prog) {
 		try {
 			$sig = (new Phar(Phar::running(false)))->getSignature();
@@ -119,6 +145,76 @@ class Packager implements Command
 			$this->error("%s\n", $e->getMessage());
 			return 2;
 		}
+	}
+
+	/**
+	 * Download remote source
+	 * @param string $source
+	 * @return string local source
+	 */
+	private function download($source) {
+		if ($this->args["git"]) {
+			$local = $this->newtemp("gitclone");
+			$this->exec("git clone", "git", ["clone", $source, $local]);
+			$source = $local;
+		} else {
+			$this->info("Fetching remote source %s ... ", $source);
+			if (!$remote = fopen($source, "r")) {
+				$this->error(null);
+				exit(2);
+			}
+			$local = new Tempfile("remote");
+			if (!stream_copy_to_stream($remote, $local->getStream())) {
+				$this->error(null);
+				exit(2);
+			}
+			$local->closeStream();
+			$source = $local->getPathname();
+			$this->info("OK\n");
+		}
+		
+		$this->cleanup[] = $local;
+		return $source;
+	}
+
+	/**
+	 * Extract local archive
+	 * @param stirng $source
+	 * @return string extracted directory
+	 */
+	private function extract($source) {
+		$dest = $this->newtemp("local");
+		$this->info("Extracting to %s ... ", $dest);
+		$archive = new PharData($source);
+		$archive->extractTo($dest);
+		$this->info("OK\n");
+		$this->cleanup[] = $dest;
+		return $dest;
+	}
+
+	/**
+	 * Localize a possibly remote source
+	 * @param string $source
+	 * @return string local source directory
+	 */
+	private function localize($source) {
+		if (!stream_is_local($source)) {
+			$source = $this->download($source);
+		}
+		if (!is_dir($source)) {
+			$source = $this->extract($source);
+			if ($this->args["pecl"]) {
+				$this->info("Sanitizing PECL dir ... ");
+				$dirs = glob("$source/*", GLOB_ONLYDIR);
+				$files = array_diff(glob("$source/*"), $dirs);
+				$source = current($dirs);
+				foreach ($files as $file) {
+					rename($file, "$source/" . basename($file));
+				}
+				$this->info("OK\n");
+			}
+		}
+		return $source;
 	}
 
 	/**
@@ -133,7 +229,12 @@ class Packager implements Command
 			
 		}
 	}
-	
+
+	/**
+	 * Ask for password on the console
+	 * @param string $prompt
+	 * @return string password
+	 */
 	private function askpass($prompt = "Password:") {
 		system("stty -echo", $retval);
 		if ($retval) {

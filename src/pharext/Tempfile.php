@@ -27,7 +27,7 @@ class Tempfile extends \SplFileInfo
 	function __destruct() {
 		@unlink($this->getPathname());
 	}
-
+	
 	function closeStream() {
 		fclose($this->handle);
 	}
