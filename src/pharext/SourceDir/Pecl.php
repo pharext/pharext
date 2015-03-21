@@ -33,10 +33,13 @@ class Pecl implements \IteratorAggregate, SourceDir
 	 * @see \pharext\SourceDir::__construct()
 	 */
 	public function __construct(Command $cmd, $path) {
-		if (!realpath("$path/package.xml")) {
+		if (realpath("$path/package2.xml")) {
+			$sxe = simplexml_load_file("$path/package2.xml");
+		} elseif (realpath("$path/package.xml")) {
+			$sxe = simplexml_load_file("$path/package.xml");
+		} else {
 			throw new \Exception("Missing package.xml in $path");
 		}
-		$sxe = simplexml_load_file("$path/package.xml");
 		$sxe->registerXPathNamespace("pecl", $sxe->getDocNamespaces()[""]);
 		
 		$args = $cmd->getArgs();
