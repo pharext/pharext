@@ -160,8 +160,8 @@ class Packager implements Command
 	 * @return string local source
 	 */
 	private function download($source) {
+		$this->info("Fetching remote source %s ... ", $source);
 		if ($this->args["git"]) {
-			$this->info("Cloning %s ... ", $source);
 			$local = new Tempdir("gitclone");
 			$cmd = new ExecCmd("git", $this->args->verbose);
 			$cmd->run(["clone", $source, $local]);
@@ -169,8 +169,27 @@ class Packager implements Command
 				$this->info("OK\n");
 			}
 		} else {
-			$this->info("Fetching remote source %s ... ", $source);
-			if (!$remote = fopen($source, "r")) {
+			$context = stream_context_create([],["notification" => function($notification, $severity, $message, $code, $bytes_cur, $bytes_max) {
+				switch ($notification) {
+					case STREAM_NOTIFY_CONNECT:
+						$this->debug("\n");
+						break;
+					case STREAM_NOTIFY_PROGRESS:
+						if ($bytes_max) {
+							$bytes_pct = $bytes_cur/$bytes_max;
+							$this->debug("\r %3d%% [%s>%s] ",
+								$bytes_pct*100,
+								str_repeat("=", round(70*$bytes_pct)), 
+								str_repeat(" ", round(70*(1-$bytes_pct)))
+							);
+						}
+						break;
+					case STREAM_NOTIFY_COMPLETED:
+						/* this is not generated, why? */
+						break;
+				}
+			}]);
+			if (!$remote = fopen($source, "r", false, $context)) {
 				$this->error(null);
 				exit(2);
 			}
@@ -184,7 +203,7 @@ class Packager implements Command
 		}
 		
 		$this->cleanup[] = $local;
-		return $local->getPathname();
+		return $local;
 	}
 
 	/**
@@ -194,12 +213,10 @@ class Packager implements Command
 	 */
 	private function extract($source) {
 		$dest = new Tempdir("local");
-		if ($this->args->verbose) {
-			$this->info("Extracting to %s ... ", $dest);
-		}
+		$this->debug("Extracting %s to %s ... ", $source, $dest);
 		$archive = new PharData($source);
 		$archive->extractTo($dest);
-		$this->info("OK\n");
+		$this->debug("OK\n");
 		$this->cleanup[] = $dest;
 		return $dest;
 	}
@@ -216,14 +233,14 @@ class Packager implements Command
 		if (!is_dir($source)) {
 			$source = $this->extract($source);
 			if ($this->args["pecl"]) {
-				$this->info("Sanitizing PECL dir ... ");
+				$this->debug("Sanitizing PECL dir ... ");
 				$dirs = glob("$source/*", GLOB_ONLYDIR);
 				$files = array_diff(glob("$source/*"), $dirs);
 				$source = current($dirs);
 				foreach ($files as $file) {
 					rename($file, "$source/" . basename($file));
 				}
-				$this->info("OK\n");
+				$this->debug("OK\n");
 			}
 		}
 		return $source;
@@ -266,7 +283,7 @@ class Packager implements Command
 	 */
 	private function createPackage() {
 		$pkguniq = uniqid();
-		$pkgtemp = $this->tempname($pkguniq, "phar");
+		$pkgtemp = sprintf("%s/%s.phar", sys_get_temp_dir(), $pkguniq);
 		$pkgdesc = "{$this->args->name}-{$this->args->release}";
 	
 		$this->info("Creating phar %s ...%s", $pkgtemp, $this->args->verbose ? "\n" : " ");
@@ -290,7 +307,7 @@ class Packager implements Command
 			if (!chmod($pkgtemp, 0777)) {
 				$this->error(null);
 			} elseif ($this->args->verbose) {
-				$this->info("Created executable phar %s\n", $pkgtemp);
+				$this->debug("Created executable phar %s\n", $pkgtemp);
 			} else {
 				$this->info("OK\n");
 			}

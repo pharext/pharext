@@ -8,11 +8,12 @@ class Tempfile extends \SplFileInfo
 	
 	function __construct($prefix) {
 		$tries = 0;
-		$template = sys_get_temp_dir()."/$prefix.";
+		/* PharData needs a dot in the filename, sure */
+		$temp = sys_get_temp_dir() . "/";
 		
 		$omask = umask(077);
 		do {
-			$path = $template.uniqid();
+			$path = $temp.uniqid($prefix).".tmp";
 			$this->handle = fopen($path, "x");
 		} while (!is_resource($this->handle) && $tries++ < 10);
 		umask($omask);

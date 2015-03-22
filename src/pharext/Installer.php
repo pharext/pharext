@@ -179,7 +179,9 @@ class Installer implements Command
 		
 			// install
 			$this->info("Running make install ... ");
-			$cmd->setSu($this->args->sudo);
+			if (isset($this->args->sudo)) {
+				$cmd->setSu($this->args->sudo);
+			}
 			if ($this->args->verbose) {
 				$cmd->run(["install"]);
 			} else {
@@ -258,20 +260,26 @@ class Installer implements Command
 				$this->info("Running INI owner transfer ... ");
 				$ugid = sprintf("%d:%d", $stat["uid"], $stat["gid"]);
 				$cmd = new ExecCmd("chown", $this->args->verbose);
-				$cmd->setSu($this->args->sudo);
+				if (isset($this->args->sudo)) {
+					$cmd->setSu($this->args->sudo);
+				}
 				$cmd->run([$ugid, $path]);
 				$this->info("OK\n");
 				
 				$this->info("Running INI permission transfer ... ");
 				$perm = decoct($stat["mode"] & 0777);
 				$cmd = new ExecCmd("chmod", $this->args->verbose);
-				$cmd->setSu($this->args->sudo);
+				if (isset($this->args->sudo)) {
+					$cmd->setSu($this->args->sudo);
+				}
 				$cmd->run([$perm, $path]);
 				$this->info("OK\n");
 	
 				$this->info("Running INI activation ... ");
 				$cmd = new ExecCmd("mv", $this->args->verbose);
-				$cmd->setSu($this->args->sudo);
+				if (isset($this->args->sudo)) {
+					$cmd->setSu($this->args->sudo);
+				}
 				$cmd->run([$path, $file]);
 				$this->info("OK\n");
 			} catch (\Exception $e) {

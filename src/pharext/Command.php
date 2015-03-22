@@ -14,6 +14,13 @@ interface Command
 	public function getArgs();
 	
 	/**
+	 * Print debug message
+	 * @param string $fmt
+	 * @param string ...$args
+	 */
+	public function debug($fmt);
+	
+	/**
 	 * Print info
 	 * @param string $fmt
 	 * @param string ...$args

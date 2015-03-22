@@ -32,6 +32,16 @@ trait Command
 	
 	/**
 	 * @inheritdoc
+	 * @see \pharext\Command::debug()
+	 */
+	public function debug($fmt) {
+		if ($this->args->verbose) {
+			vprintf($fmt, array_slice(func_get_args(), 1));
+		}
+	}
+	
+	/**
+	 * @inheritdoc
 	 * @see \pharext\Command::info()
 	 */
 	public function info($fmt) {
@@ -118,34 +128,6 @@ trait Command
 	}
 	
 	/**
-	 * Create temporary file/directory name
-	 * @param string $prefix
-	 * @param string $suffix
-	 */
-	private function tempname($prefix, $suffix = null) {
-		if (!isset($suffix)) {
-			$suffix = uniqid();
-		}
-		return sprintf("%s/%s.%s", sys_get_temp_dir(), $prefix, $suffix);
-	}
-
-	/**
-	 * Create a new temp directory
-	 * @param string $prefix
-	 * @return string
-	 */
-	private function newtemp($prefix) {
-		$temp = $this->tempname($prefix);
-		if (!is_dir($temp)) {
-			if (!mkdir($temp, 0700, true)) {
-				$this->error(null);
-				exit(3);
-			}
-		}
-		return $temp;
-	}
-
-	/**
 	 * rm -r
 	 * @param string $dir
 	 */
@@ -161,76 +143,6 @@ trait Command
 		}
 		if (!rmdir($dir)) {
 			$this->error(null);
-		}
-	}
-
-	/**
-	 * Execute a program with escalated privileges handling interactive password prompt
-	 * @param string $command
-	 * @param string $output
-	 * @return int
-	 */
-	private function sudo($command, &$output) {
-		if (!($proc = proc_open($command, [STDIN,["pipe","w"],["pipe","w"]], $pipes))) {
-			return -1;
-		}
-		$stdout = $pipes[1];
-		$passwd = 0;
-		while (!feof($stdout)) {
-			$R = [$stdout]; $W = []; $E = [];
-			if (!stream_select($R, $W, $E, null)) {
-				continue;
-			}
-			$data = fread($stdout, 0x1000);
-			/* only check a few times */
-			if ($passwd++ < 10) {
-				if (stristr($data, "password")) {
-					printf("\n%s", $data);
-				}
-			}
-			$output .= $data;
-		}
-		return proc_close($proc);
-	}
-
-	/**
-	 * Execute a system command
-	 * @param string $name pretty name
-	 * @param string $command command
-	 * @param array $args command arguments
-	 * @param bool $sudo whether the command may need escalated privileges
-	 */
-	private function exec($name, $command, array $args = null, $sudo = false) {
-		$exec = escapeshellcmd($command);
-		if ($args) {
-			$exec .= " ". implode(" ", array_map("escapeshellarg", (array) $args));
-		}
-
-		if ($this->args->verbose) {
-			$this->info("Running %s ...\n", $exec);
-		} else {
-			$this->info("Running %s ... ", $name);
-		}
-
-		if ($sudo && isset($this->args->sudo)) {
-			$retval = $this->sudo(sprintf($this->args->sudo." 2>&1", $exec), $output);
-		} elseif ($this->args->verbose) {
-			passthru($exec ." 2>&1", $retval);
-		} else {
-			exec($exec ." 2>&1", $output, $retval);
-			$output = implode("\n", $output);
-		}
-
-		if ($retval) {
-			$this->error("Command %s failed with (%s)\n", $command, $retval);
-			if (isset($output) && !$this->args->quiet) {
-				printf("%s\n", $output);
-			}
-			exit(2);
-		}
-		if (!$this->args->verbose) {
-			// we already have a bunch of output
-			$this->info("OK\n");
 		}
 	}
 }
