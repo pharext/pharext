@@ -95,6 +95,10 @@ class Packager implements Command
 		}
 
 		try {
+			/* source needs to be evaluated before CliArgs validation, 
+			 * so e.g. name and version can be overriden and CliArgs 
+			 * does not complain about missing arguments
+			 */
 			if ($this->args["source"]) {
 				$source = $this->localize($this->args["source"]);
 				if ($this->args["pecl"]) {
@@ -115,7 +119,10 @@ class Packager implements Command
 		
 		if ($errs) {
 			if (!$this->args["quiet"]) {
-				$this->header();
+				if (!headers_sent()) {
+					/* only display header, if we didn't generate any output yet */
+					$this->header();
+				}
 			}
 			foreach ($errs as $err) {
 				$this->error("%s\n", $err);
@@ -154,9 +161,13 @@ class Packager implements Command
 	 */
 	private function download($source) {
 		if ($this->args["git"]) {
-			$local = $this->newtemp("gitclone");
-			$this->exec("git clone", "git", ["clone", $source, $local]);
-			$source = $local;
+			$this->info("Cloning %s ... ", $source);
+			$local = new Tempdir("gitclone");
+			$cmd = new ExecCmd("git", $this->args->verbose);
+			$cmd->run(["clone", $source, $local]);
+			if (!$this->args->verbose) {
+				$this->info("OK\n");
+			}
 		} else {
 			$this->info("Fetching remote source %s ... ", $source);
 			if (!$remote = fopen($source, "r")) {
@@ -169,12 +180,11 @@ class Packager implements Command
 				exit(2);
 			}
 			$local->closeStream();
-			$source = $local->getPathname();
 			$this->info("OK\n");
 		}
 		
 		$this->cleanup[] = $local;
-		return $source;
+		return $local->getPathname();
 	}
 
 	/**
@@ -183,8 +193,10 @@ class Packager implements Command
 	 * @return string extracted directory
 	 */
 	private function extract($source) {
-		$dest = $this->newtemp("local");
-		$this->info("Extracting to %s ... ", $dest);
+		$dest = new Tempdir("local");
+		if ($this->args->verbose) {
+			$this->info("Extracting to %s ... ", $dest);
+		}
 		$archive = new PharData($source);
 		$archive->extractTo($dest);
 		$this->info("OK\n");

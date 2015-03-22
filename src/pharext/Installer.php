@@ -69,7 +69,7 @@ class Installer implements Command
 		$phar = new Phar(Phar::running(false));
 		foreach ($phar as $entry) {
 			if (fnmatch("*.ext.phar*", $entry->getBaseName())) {
-				$temp = $this->newtemp($entry->getBaseName());
+				$temp = new Tempdir($entry->getBaseName());
 				$phar->extractTo($temp, $entry->getFilename(), true);
 				$phars[$temp] = new Phar($temp."/".$entry->getFilename());
 			}
@@ -140,36 +140,57 @@ class Installer implements Command
 			$this->error(null);
 			exit(4);
 		}
-
-		// phpize
-		$this->exec("phpize", $this->php("ize"));
-
-		// configure
-		$args = ["--with-php-config=". $this->php("-config")];
-		if ($this->args->configure) {
-			$args = array_merge($args, $this->args->configure);
-		}
-		$this->exec("configure", "./configure", $args);
-
-		// make
-		if ($this->args->verbose) {
-			$this->exec("make", "make", ["-j3"]);
-		} else {
-			$this->exec("make", "make", ["-j3", "-s"]);
-		}
-
-		// install
-		if ($this->args->verbose) {
-			$this->exec("install", "make", ["install"], true);
-		} else {
-			$this->exec("install", "make", ["install", "-s"], true);
-		}
-
-		// activate
+		
+		$this->build();
 		$this->activate();
-
-		// cleanup
 		$this->cleanup($temp);
+	}
+	
+	/**
+	 * Phpize + trinity
+	 */
+	private function build() {
+		try {
+			// phpize
+			$this->info("Runnin phpize ... ");
+			$cmd = new ExecCmd($this->php("ize"), $this->args->verbose);
+			$cmd->run();
+			$this->info("OK\n");
+				
+			// configure
+			$this->info("Running configure ... ");
+			$args = ["--with-php-config=". $this->php("-config")];
+			if ($this->args->configure) {
+				$args = array_merge($args, $this->args->configure);
+			}
+			$cmd = new ExecCmd("./configure", $this->args->verbose);
+			$cmd->run($args);
+			$this->info("OK\n");
+				
+			// make
+			$this->info("Running make ... ");
+			$cmd = new ExecCmd("make", $this->args->verbose);
+			if ($this->args->verbose) {
+				$cmd->run(["-j3"]);
+			} else {
+				$cmd->run(["-j3", "-s"]);
+			}
+			$this->info("OK\n");
+		
+			// install
+			$this->info("Running make install ... ");
+			$cmd->setSu($this->args->sudo);
+			if ($this->args->verbose) {
+				$cmd->run(["install"]);
+			} else {
+				$cmd->run(["install", "-s"]);
+			}
+			$this->info("OK\n");
+		
+		} catch (\Exception $e) {
+			$this->error("%s\n", $e->getMessage());
+			$this->error("%s\n", $cmd->getOutput());
+		}
 	}
 
 	/**
@@ -233,13 +254,31 @@ class Installer implements Command
 			$path = $temp->getPathname();
 			$stat = stat($file);
 
-			$ugid = sprintf("%d:%d", $stat["uid"], $stat["gid"]);
-			$this->exec("INI owner transfer", "chown", [$ugid, $path], true);
-			
-			$perm = decoct($stat["mode"] & 0777);
-			$this->exec("INI permission transfer", "chmod", [$perm, $path], true);
-			
-			$this->exec("INI activation", "mv", [$path, $file], true);
+			try {
+				$this->info("Running INI owner transfer ... ");
+				$ugid = sprintf("%d:%d", $stat["uid"], $stat["gid"]);
+				$cmd = new ExecCmd("chown", $this->args->verbose);
+				$cmd->setSu($this->args->sudo);
+				$cmd->run([$ugid, $path]);
+				$this->info("OK\n");
+				
+				$this->info("Running INI permission transfer ... ");
+				$perm = decoct($stat["mode"] & 0777);
+				$cmd = new ExecCmd("chmod", $this->args->verbose);
+				$cmd->setSu($this->args->sudo);
+				$cmd->run([$perm, $path]);
+				$this->info("OK\n");
+	
+				$this->info("Running INI activation ... ");
+				$cmd = new ExecCmd("mv", $this->args->verbose);
+				$cmd->setSu($this->args->sudo);
+				$cmd->run([$path, $file]);
+				$this->info("OK\n");
+			} catch (\Exception $e) {
+				$this->error("%s\n", $e->getMessage());
+				$this->error("%s\n", $cmd->getOutput());
+				exit(5);
+			}
 		}
 	}
 }
