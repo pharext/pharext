@@ -167,7 +167,7 @@ class Args implements \ArrayAccess
 			return $spec[3] & self::REQUIRED;
 		});
 		foreach ($required as $req) {
-			if (!isset($this[$req[0]])) {
+			if (!strlen($this[$req[0]])) {
 				yield sprintf("Option --%s is required", $req[1]);
 			}
 		}
