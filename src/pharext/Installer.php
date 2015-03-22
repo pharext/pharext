@@ -64,17 +64,17 @@ class Installer implements Command
 	 */
 	public function run($argc, array $argv) {
 		$this->cwd = getcwd();
-		$this->tmp = $this->tempname(basename(Phar::running(false)));
+		$this->tmp = new Tempdir(basename(Phar::running(false)));
 
 		$phar = new Phar(Phar::running(false));
 		foreach ($phar as $entry) {
 			if (fnmatch("*.ext.phar*", $entry->getBaseName())) {
 				$temp = new Tempdir($entry->getBaseName());
 				$phar->extractTo($temp, $entry->getFilename(), true);
-				$phars[$temp] = new Phar($temp."/".$entry->getFilename());
+				$phars[(string) $temp] = new Phar($temp."/".$entry->getFilename());
 			}
 		}
-		$phars[$this->tmp] = $phar;
+		$phars[(string) $this->tmp] = $phar;
 
 		foreach ($phars as $phar) {
 			if (isset($phar["pharext_install.php"])) {
