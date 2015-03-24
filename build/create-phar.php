@@ -4,47 +4,28 @@
  * Creates bin/pharext, invoked through the Makefile
  */
 
-$pkgname = __DIR__."/../bin/pharext";
-$tmpname = __DIR__."/pharext.phar";
+set_include_path(dirname(__DIR__)."/src");
+spl_autoload_register(function($c) {
+	return include strtr($c, "\\_", "//") . ".php";
+});
 
-if (file_exists($tmpname)) {
-	if (!unlink($tmpname)) {
-		fprintf(STDERR, "%s\n", error_get_last()["message"]);
-		exit(3);
-	}
-}
+require_once __DIR__."/../src/pharext/Version.php";
 
-$package = new \Phar($tmpname, 0, "pharext.phar");
+$file = (new pharext\Task\PharBuild(null, [
+	"header" => sprintf("pharext v%s (c) Michael Wallner <mike@php.net>", pharext\VERSION),
+	"version" => pharext\VERSION,
+	"name" => "pharext",
+	"date" => date("Y-m-d"),
+	"stub" => "pharext_packager.php",
+	"license" => file_get_contents(__DIR__."/../LICENSE")
+], false))->run();
 
 if (getenv("SIGN")) {
-	shell_exec("stty -echo");
-	printf("Password: ");
-	$password = fgets(STDIN, 1024);
-	printf("\n");
-	shell_exec("stty echo");
-	if (substr($password, -1) == "\n") {
-		$password = substr($password, 0, -1);
-	}
-	
-	$pkey = openssl_pkey_get_private("file://".__DIR__."/pharext.key", $password);
-	if (!is_resource($pkey)) {
-		$this->error("Could not load private key %s/pharext.key", __DIR__);
-		exit(3);
-	}
-	if (!openssl_pkey_export($pkey, $key)) {
-		$this->error(null);
-		exit(3);
-	}
-	
-	$package->setSignatureAlgorithm(Phar::OPENSSL, $key);
+	$pass = (new pharext\Task\Askpass)->run();
+	$sign = new pharext\Task\PharSign($file, __DIR__."/pharext.key", $pass);
+	$pkey = $sign->run();
+	$pkey->exportPublicKey(__DIR__."/../bin/pharext.pubkey");
 }
 
-$package->buildFromDirectory(dirname(__DIR__)."/src", "/^.*\.php$/");
-$package->setDefaultStub("pharext_packager.php");
-$package->setStub("#!/usr/bin/php -dphar.readonly=0\n".$package->getStub());
-unset($package);
-
-if (!rename($tmpname, $pkgname)) {
-	fprintf(STDERR, "%s\n", error_get_last()["message"]);
-	exit(4);
-}
+/* we do not need the extra logic of Task\PharRename */
+rename($file, __DIR__."/../bin/pharext");

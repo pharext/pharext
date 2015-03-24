@@ -28,12 +28,19 @@ interface Command
 	public function info($fmt);
 	
 	/**
+	 * Print warning
+	 * @param string $fmt
+	 * @param string ...$args
+	 */
+	public function warn($fmt);
+
+	/**
 	 * Print error
 	 * @param string $fmt
 	 * @param string ...$args
 	 */
 	public function error($fmt);
-	
+
 	/**
 	 * Execute the command
 	 * @param int $argc command line argument count

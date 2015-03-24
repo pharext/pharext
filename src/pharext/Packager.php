@@ -3,7 +3,6 @@
 namespace pharext;
 
 use Phar;
-use PharData;
 use pharext\Cli\Args as CliArgs;
 use pharext\Cli\Command as CliCommand;
 
@@ -58,6 +57,10 @@ class Packager implements Command
 				CliArgs::OPTIONAL|CliArgs::SINGLE|CliArgs::REQARG],
 			[null, "signature", "Dump signature",
 				CliArgs::OPTIONAL|CliArgs::SINGLE|CliArgs::NOARG|CliArgs::HALT],
+			[null, "license", "Show license",
+				CliArgs::OPTIONAL|CliArgs::SINGLE|CliArgs::NOARG|CliArgs::HALT],
+			[null, "version", "Show version",
+				CliArgs::OPTIONAL|CliArgs::SINGLE|CliArgs::NOARG|CliArgs::HALT],
 		]);
 	}
 	
@@ -68,7 +71,7 @@ class Packager implements Command
 		foreach ($this->cleanup as $cleanup) {
 			if (is_dir($cleanup)) {
 				$this->rm($cleanup);
-			} else {
+			} elseif (file_exists($cleanup)) {
 				unlink($cleanup);
 			}
 		}
@@ -90,8 +93,16 @@ class Packager implements Command
 			$this->help($prog);
 			exit;
 		}
-		if ($this->args["signature"]) {
-			exit($this->signature($prog));
+		try {
+			foreach (["signature", "license", "version"] as $opt) {
+				if ($this->args[$opt]) {
+					printf("%s\n", $this->metadata($opt));
+					exit;
+				}
+			}
+		} catch (\Exception $e) {
+			$this->error("%s\n", $e->getMessage());
+			exit(2);
 		}
 
 		try {
@@ -119,10 +130,7 @@ class Packager implements Command
 		
 		if ($errs) {
 			if (!$this->args["quiet"]) {
-				if (!headers_sent()) {
-					/* only display header, if we didn't generate any output yet */
-					$this->header();
-				}
+				$this->header();
 			}
 			foreach ($errs as $err) {
 				$this->error("%s\n", $err);
@@ -136,72 +144,29 @@ class Packager implements Command
 		
 		$this->createPackage();
 	}
-
-	/**
-	 * Dump program signature
-	 * @param string $prog
-	 * @return int exit code
-	 */
-	function signature($prog) {
-		try {
-			$sig = (new Phar(Phar::running(false)))->getSignature();
-			printf("%s signature of %s\n%s", $sig["hash_type"], $prog, 
-				chunk_split($sig["hash"], 64, "\n"));
-			return 0;
-		} catch (\Exception $e) {
-			$this->error("%s\n", $e->getMessage());
-			return 2;
-		}
-	}
-
+	
 	/**
 	 * Download remote source
 	 * @param string $source
 	 * @return string local source
 	 */
 	private function download($source) {
-		$this->info("Fetching remote source %s ... ", $source);
-		if ($this->args["git"]) {
-			$local = new Tempdir("gitclone");
-			$cmd = new ExecCmd("git", $this->args->verbose);
-			$cmd->run(["clone", $source, $local]);
-			if (!$this->args->verbose) {
-				$this->info("OK\n");
-			}
-		} else {
-			$context = stream_context_create([],["notification" => function($notification, $severity, $message, $code, $bytes_cur, $bytes_max) {
-				switch ($notification) {
-					case STREAM_NOTIFY_CONNECT:
-						$this->debug("\n");
-						break;
-					case STREAM_NOTIFY_PROGRESS:
-						if ($bytes_max) {
-							$bytes_pct = $bytes_cur/$bytes_max;
-							$this->debug("\r %3d%% [%s>%s] ",
-								$bytes_pct*100,
-								str_repeat("=", round(70*$bytes_pct)), 
-								str_repeat(" ", round(70*(1-$bytes_pct)))
-							);
-						}
-						break;
-					case STREAM_NOTIFY_COMPLETED:
-						/* this is not generated, why? */
-						break;
-				}
-			}]);
-			if (!$remote = fopen($source, "r", false, $context)) {
-				$this->error(null);
-				exit(2);
-			}
-			$local = new Tempfile("remote");
-			if (!stream_copy_to_stream($remote, $local->getStream())) {
-				$this->error(null);
-				exit(2);
-			}
-			$local->closeStream();
-			$this->info("OK\n");
-		}
+		$this->info("Fetching remote source %s ...\n", $source);
 		
+		if ($this->args->git) {
+			$task = new Task\GitClone($source);
+		} else {
+			$task = new Task\StreamFetch($source, function($bytes_pct) {
+				$this->debug(" %3d%% [%s>%s] \r",
+					floor($bytes_pct*100),
+					str_repeat("=", round(50*$bytes_pct)),
+					str_repeat(" ", round(50*(1-$bytes_pct)))
+				);
+			});
+		}
+		$local = $task->run($this->args->verbose);
+		$this->debug("\n");
+
 		$this->cleanup[] = $local;
 		return $local;
 	}
@@ -212,11 +177,11 @@ class Packager implements Command
 	 * @return string extracted directory
 	 */
 	private function extract($source) {
-		$dest = new Tempdir("local");
-		$this->debug("Extracting %s to %s ... ", $source, $dest);
-		$archive = new PharData($source);
-		$archive->extractTo($dest);
-		$this->debug("OK\n");
+		$this->debug("Extracting %s ...\n", $source);
+		
+		$task = new Task\Extract($source);
+		$dest = $task->run($this->args->verbose);
+		
 		$this->cleanup[] = $dest;
 		return $dest;
 	}
@@ -229,134 +194,96 @@ class Packager implements Command
 	private function localize($source) {
 		if (!stream_is_local($source)) {
 			$source = $this->download($source);
+			$this->cleanup[] = $source;
 		}
+		$source = realpath($source);
 		if (!is_dir($source)) {
 			$source = $this->extract($source);
-			if ($this->args["pecl"]) {
-				$this->debug("Sanitizing PECL dir ... ");
-				$dirs = glob("$source/*", GLOB_ONLYDIR);
-				$files = array_diff(glob("$source/*"), $dirs);
-				$source = current($dirs);
-				foreach ($files as $file) {
-					rename($file, "$source/" . basename($file));
-				}
-				$this->debug("OK\n");
+			$this->cleanup[] = $source;
+			
+			if ($this->args->pecl) {
+				$this->debug("Sanitizing PECL dir ...\n");
+				$source = (new Task\PeclFixup($source))->run($this->args->verbose);
 			}
 		}
 		return $source;
 	}
 
 	/**
-	 * Traverses all pharext source files to bundle
-	 * @return Generator
-	 */
-	private function bundle() {
-		$rdi = new \RecursiveDirectoryIterator(__DIR__);
-		$rii = new \RecursiveIteratorIterator($rdi);
-		for ($rii->rewind(); $rii->valid(); $rii->next()) {
-			yield "pharext/". $rii->getSubPathname() => $rii->key();
-			
-		}
-	}
-
-	/**
-	 * Ask for password on the console
-	 * @param string $prompt
-	 * @return string password
-	 */
-	private function askpass($prompt = "Password:") {
-		system("stty -echo", $retval);
-		if ($retval) {
-			$this->error("Could not disable echo on the terminal\n");
-		}
-		printf("%s ", $prompt);
-		$pass = fgets(STDIN, 1024);
-		system("stty echo");
-		if (substr($pass, -1) == "\n") {
-			$pass = substr($pass, 0, -1);
-		}
-		return $pass;
-	}
-
-	/**
 	 * Creates the extension phar
 	 */
 	private function createPackage() {
-		$pkguniq = uniqid();
-		$pkgtemp = sprintf("%s/%s.phar", sys_get_temp_dir(), $pkguniq);
-		$pkgdesc = "{$this->args->name}-{$this->args->release}";
-	
-		$this->info("Creating phar %s ...%s", $pkgtemp, $this->args->verbose ? "\n" : " ");
 		try {
-			$package = new Phar($pkgtemp);
+			$meta = array_merge($this->metadata(), [
+				"date" => date("Y-m-d"),
+				"name" => $this->args->name,
+				"release" => $this->args->release,
+				"license" => @file_get_contents(current(glob($this->source->getBaseDir()."/LICENSE*"))),
+				"stub" => "pharext_installer.php",
+			]);
+			$file = (new Task\PharBuild($this->source, $meta))->run();
 
 			if ($this->args->sign) {
-				$this->info("\nUsing private key to sign phar ... \n");
-				$privkey = new Openssl\PrivateKey(realpath($this->args->sign), $this->askpass());
-				$privkey->sign($package);
+				$this->info("Using private key to sign phar ...\n");
+				$pass = (new Task\Askpass)->run($this->args->verbose);
+				$sign = new Task\PharSign($file, $this->args->sign, $pass);
+				$pkey = $sign->run($this->args->verbose);
 			}
 
-			$package->startBuffering();
-			$package->buildFromIterator($this->source, $this->source->getBaseDir());
-			$package->buildFromIterator($this->bundle(__DIR__));
-			$package->addFile(__DIR__."/../pharext_installer.php", "pharext_installer.php");
-			$package->setDefaultStub("pharext_installer.php");
-			$package->setStub("#!/usr/bin/php -dphar.readonly=1\n".$package->getStub());
-			$package->stopBuffering();
-
-			if (!chmod($pkgtemp, 0777)) {
-				$this->error(null);
-			} elseif ($this->args->verbose) {
-				$this->debug("Created executable phar %s\n", $pkgtemp);
-			} else {
-				$this->info("OK\n");
-			}
-			if ($this->args->gzip) {
-				$this->info("Compressing with gzip ... ");
-				try {
-					$package->compress(Phar::GZ)
-						->setDefaultStub("pharext_installer.php");
-					$this->info("OK\n");
-				} catch (\Exception $e) {
-					$this->error("%s\n", $e->getMessage());
-				}
-			}
-			if ($this->args->bzip) {
-				$this->info("Compressing with bzip ... ");
-				try {
-					$package->compress(Phar::BZ2)
-						->setDefaultStub("pharext_installer.php");
-					$this->info("OK\n");
-				} catch (\Exception $e) {
-					$this->error("%s\n", $e->getMessage());
-				}
-			}
-
-			unset($package);
 		} catch (\Exception $e) {
 			$this->error("%s\n", $e->getMessage());
 			exit(4);
 		}
 
-		foreach (glob($pkgtemp."*") as $pkgtemp) {
-			$pkgfile = str_replace($pkguniq, "{$pkgdesc}.ext", $pkgtemp);
-			$pkgname = $this->args->dest ."/". basename($pkgfile);
-			$this->info("Finalizing %s ... ", $pkgname);
-			if (!rename($pkgtemp, $pkgname)) {
-				$this->error(null);
-				exit(5);
-			}
-			$this->info("OK\n");
-			if ($this->args->sign && isset($privkey)) {
-				$keyname = $this->args->dest ."/". basename($pkgfile) . ".pubkey";
-				$this->info("Public Key %s ... ", $keyname);
-				try {
-					$privkey->exportPublicKey($keyname);
-					$this->info("OK\n");
-				} catch (\Exception $e) {
-					$this->error("%s", $e->getMessage());
+		if ($this->args->gzip) {
+			try {
+				$gzip = (new Task\PharCompress($file, Phar::GZ))->run();
+				$move = new Task\PharRename($gzip, $this->args->dest, $this->args->name ."-". $this->args->release);
+				$name = $move->run($this->args->verbose);
+
+				$this->info("Created gzipped phar %s\n", $name);
+
+				if ($this->args->sign) {
+					$sign = new Task\PharSign($name, $this->args->sign, $pass);
+					$sign->run($this->args->verbose)->exportPublicKey($name.".pubkey");
 				}
+
+			} catch (\Exception $e) {
+				$this->warn("%s\n", $e->getMessage());
 			}
-		} 
+		}
+		
+		if ($this->args->bzip) {
+			try {
+				$bzip = (new Task\PharCompress($file, Phar::BZ2))->run();
+				$move = new Task\PharRename($bzip, $this->args->dest, $this->args->name ."-". $this->args->release);
+				$name = $move->run($this->args->verbose);
+
+				$this->info("Created bzipped phar %s\n", $name);
+
+				if ($this->args->sign) {
+					$sign = new Task\PharSign($name, $this->args->sign, $pass);
+					$sign->run($this->args->verbose)->exportPublicKey($name.".pubkey");
+				}
+
+			} catch (\Exception $e) {
+				$this->warn("%s\n", $e->getMessage());
+			}
+		}
+
+		try {
+			$move = new Task\PharRename($file, $this->args->dest, $this->args->name ."-". $this->args->release);
+			$name = $move->run($this->args->verbose);
+
+			$this->info("Created executable phar %s\n", $name);
+
+			if (isset($pkey)) {
+				$pkey->exportPublicKey($name.".pubkey");
+			}
+
+		} catch (\Exception $e) {
+			$this->error("%s\n", $e->getMessage());
+			exit(4);
+		}
 	}
 }

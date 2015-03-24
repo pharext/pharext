@@ -55,7 +55,7 @@ class Git implements \IteratorAggregate, SourceDir
 					}
 					/* there may be symlinks, so no realpath here */
 					if (!file_exists("$path/$file")) {
-						$this->cmd->error("File %s does not exist in %s\n", $file, $path);
+						$this->cmd->warn("File %s does not exist in %s\n", $file, $path);
 					}
 					yield "$path/$file";
 				}

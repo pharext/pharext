@@ -9,7 +9,6 @@ bin/pharext: src/* src/pharext/* src/pharext/*/*
 	@for file in $?; do php -l $$file | sed -ne '/^No syntax errors/!p' && exit $${PIPESTATUS[0]}; done
 	@echo "Creating bin/pharext ... "
 	php -d phar.readonly=0 build/create-phar.php
-	chmod +x $@
 
 test:
 	@echo "Running tests ... "

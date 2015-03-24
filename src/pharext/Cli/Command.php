@@ -4,7 +4,21 @@ namespace pharext\Cli;
 
 use pharext\Cli\Args as CliArgs;
 
-require_once "pharext/Version.php";
+use Phar;
+
+if (!function_exists("array_column")) {
+	function array_column(array $array, $col, $idx = null) {
+		$result = [];
+		foreach ($array as $el) {
+			if (isset($idx)) {
+				$result[$el[$idx]] = $el[$col];
+			} else {
+				$result[] = $el[$col];
+			}
+		}
+		return $result;
+	}
+}
 
 trait Command
 {
@@ -23,11 +37,36 @@ trait Command
 	}
 
 	/**
+	 * Retrieve metadata of the currently running phar
+	 * @param string $key
+	 * @return mixed
+	 */
+	public function metadata($key = null) {
+		$running = new Phar(Phar::running(false));
+
+		if ($key === "signature") {
+			$sig = $running->getSignature();
+			return sprintf("%s signature of %s\n%s", 
+				$sig["hash_type"],
+				$this->metadata("name"),
+				chunk_split($sig["hash"], 64, "\n"));
+		}
+
+		$metadata = $running->getMetadata();
+		if (isset($key)) {
+			return $metadata[$key];
+		}
+		return $metadata;
+	}
+
+	/**
 	 * Output pharext vX.Y.Z header
 	 */
-	function header() {
-		printf("pharext v%s (c) Michael Wallner <mike@php.net>\n\n", 
-			\pharext\VERSION);
+	public function header() {
+		if (!headers_sent()) {
+			/* only display header, if we didn't generate any output yet */
+			printf("%s\n\n", $this->metadata("header"));
+		}
 	}
 	
 	/**
@@ -47,6 +86,22 @@ trait Command
 	public function info($fmt) {
 		if (!$this->args->quiet) {
 			vprintf($fmt, array_slice(func_get_args(), 1));
+		}
+	}
+
+	/**
+	 * @inheritdoc
+	 * @see \pharext\Command::warn()
+	 */
+	public function warn($fmt) {
+		if (!$this->args->quiet) {
+			if (!isset($fmt)) {
+				$fmt = "%s\n";
+				$arg = error_get_last()["message"];
+			} else {
+				$arg = array_slice(func_get_args(), 1);
+			}
+			vfprintf(STDERR, "Warning: $fmt", $arg);
 		}
 	}
 
@@ -138,11 +193,11 @@ trait Command
 			} elseif (is_dir("$dir/$entry")) {
 				$this->rm("$dir/$entry");
 			} elseif (!unlink("$dir/$entry")) {
-				$this->error(null);
+				$this->warn(null);
 			}
 		}
 		if (!rmdir($dir)) {
-			$this->error(null);
+			$this->warn(null);
 		}
 	}
 }

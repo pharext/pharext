@@ -2,9 +2,11 @@
 
 namespace pharext;
 
-use Phar;
 use pharext\Cli\Args as CliArgs;
 use pharext\Cli\Command as CliCommand;
+
+use Phar;
+use SplObjectStorage;
 
 /**
  * The extension install command executed by the extension phar
@@ -13,18 +15,6 @@ class Installer implements Command
 {
 	use CliCommand;
 	
-	/**
-	 * The temporary directory we should operate in
-	 * @var string
-	 */
-	private $tmp;
-
-	/**
-	 * The directory we came from
-	 * @var string
-	 */
-	private $cwd;
-
 	/**
 	 * Create the command
 	 */
@@ -51,11 +41,22 @@ class Installer implements Command
 		]);
 	}
 	
-	/**
-	 * Cleanup temp directory
-	 */
-	public function __destruct() {
-		$this->cleanup();
+	private function extract(Phar $phar) {
+		$this->debug("Extracting %s ...\n", basename($phar->getPath()));
+		return (new Task\Extract($phar))->run($this->args->verbose);
+	}
+
+	private function hooks(SplObjectStorage $phars) {
+		$hooks = [];
+		foreach ($phars as $phar) {
+			if (isset($phar["pharext_install.php"])) {
+				$callable = include $phar["pharext_install.php"];
+				if (is_callable($callable)) {
+					$hooks[] = $callable($this);
+				}
+			}
+		}
+		return $hooks;
 	}
 
 	/**
@@ -63,169 +64,111 @@ class Installer implements Command
 	 * @see \pharext\Command::run()
 	 */
 	public function run($argc, array $argv) {
-		$this->cwd = getcwd();
-		$this->tmp = new Tempdir(basename(Phar::running(false)));
-
+		$list = new SplObjectStorage();
 		$phar = new Phar(Phar::running(false));
-		foreach ($phar as $entry) {
-			if (fnmatch("*.ext.phar*", $entry->getBaseName())) {
-				$temp = new Tempdir($entry->getBaseName());
-				$phar->extractTo($temp, $entry->getFilename(), true);
-				$phars[(string) $temp] = new Phar($temp."/".$entry->getFilename());
-			}
-		}
-		$phars[(string) $this->tmp] = $phar;
+		$temp = $this->extract($phar);
 
-		foreach ($phars as $phar) {
-			if (isset($phar["pharext_install.php"])) {
-				$callable = include $phar["pharext_install.php"];
-				if (is_callable($callable)) {
-					$recv[] = $callable($this);
-				}
+		foreach ($phar as $entry) {
+			$dep_file = $entry->getBaseName();
+			if (fnmatch("*.ext.phar*", $dep_file)) {
+				$dep_phar = new Phar("$temp/$dep_file");
+				$list[$dep_phar] = $this->extract($dep_phar);
 			}
 		}
-		
+		/* the actual ext.phar at last */
+		$list[$phar] = $temp;
+
+		/* installer hooks */
+		$hook = $this->hooks($list);
+
+		/* standard arg stuff */
 		$errs = [];
 		$prog = array_shift($argv);
 		foreach ($this->args->parse(--$argc, $argv) as $error) {
 			$errs[] = $error;
 		}
-		
+
 		if ($this->args["help"]) {
 			$this->header();
 			$this->help($prog);
 			exit;
 		}
-		
+
 		foreach ($this->args->validate() as $error) {
 			$errs[] = $error;
 		}
-		
+
 		if ($errs) {
 			if (!$this->args["quiet"]) {
 				$this->header();
 			}
 			foreach ($errs as $err) {
 				$this->error("%s\n", $err);
-			} 
+			}
 			if (!$this->args["quiet"]) {
 				$this->help($prog);
 			}
 			exit(1);
 		}
-		
-		if (isset($recv)) {
-			foreach ($recv as $r) {
-				$r($this);
+
+		/* post process hooks */
+		foreach ($hook as $callback) {
+			if (is_callable($callback)) {
+				$callback($this);
 			}
 		}
-		foreach ($phars as $temp => $phar) {
-			$this->installPackage($phar, $temp);
-		}
-	}
 
-	/**
-	 * Prepares, configures, builds and installs the extension
-	 */
-	private function installPackage(Phar $phar, $temp) {
-		$this->info("Installing %s ... \n", basename($phar->getAlias()));
-		try {
-			$phar->extractTo($temp, null, true);
-		} catch (\Exception $e) {
-			$this->error("%s\n", $e->getMessage());
-			exit(3);
+		/* install packages */
+		foreach ($list as $phar) {
+			$this->info("Installing %s ...\n", basename($phar->getPath()));
+			$this->install($list[$phar]);
+			$this->activate($list[$phar]);
+			$this->cleanup($list[$phar]);
+			$this->info("Successfully installed %s!\n", basename($phar->getPath()));
 		}
-
-		if (!chdir($temp)) {
-			$this->error(null);
-			exit(4);
-		}
-		
-		$this->build();
-		$this->activate();
-		$this->cleanup($temp);
 	}
 	
 	/**
 	 * Phpize + trinity
 	 */
-	private function build() {
+	private function install($temp) {
 		try {
 			// phpize
-			$this->info("Runnin phpize ... ");
-			$cmd = new ExecCmd($this->php("ize"), $this->args->verbose);
-			$cmd->run();
-			$this->info("OK\n");
-				
+			$this->info("Running phpize ...\n");
+			$phpize = new Task\Phpize($temp, $this->args->prefix, $this->args->{"common-name"});
+			$phpize->run($this->args->verbose);
+
 			// configure
-			$this->info("Running configure ... ");
-			$args = ["--with-php-config=". $this->php("-config")];
-			if ($this->args->configure) {
-				$args = array_merge($args, $this->args->configure);
-			}
-			$cmd = new ExecCmd("./configure", $this->args->verbose);
-			$cmd->run($args);
-			$this->info("OK\n");
+			$this->info("Running configure ...\n");
+			$configure = new Task\Configure($temp, $this->args->configure, $this->args->prefix, $this->args{"common-name"});
+			$configure->run($this->args->verbose);
 				
 			// make
-			$this->info("Running make ... ");
-			$cmd = new ExecCmd("make", $this->args->verbose);
-			if ($this->args->verbose) {
-				$cmd->run(["-j3"]);
-			} else {
-				$cmd->run(["-j3", "-s"]);
-			}
-			$this->info("OK\n");
-		
+			$this->info("Running make ...\n");
+			$make = new Task\Make($temp);
+			$make->run($this->args->verbose);
+
 			// install
-			$this->info("Running make install ... ");
-			if (isset($this->args->sudo)) {
-				$cmd->setSu($this->args->sudo);
-			}
-			if ($this->args->verbose) {
-				$cmd->run(["install"]);
-			} else {
-				$cmd->run(["install", "-s"]);
-			}
-			$this->info("OK\n");
+			$this->info("Running make install ...\n");
+			$sudo = isset($this->args->sudo) ? $this->args->sudo : null;
+			$install = new Task\Make($temp, ["install"], $sudo);
+			$install->run($this->args->verbose);
 		
 		} catch (\Exception $e) {
 			$this->error("%s\n", $e->getMessage());
-			$this->error("%s\n", $cmd->getOutput());
+			exit(2);
 		}
 	}
 
-	/**
-	 * Perform any cleanups
-	 */
-	private function cleanup($temp = null) {
-		if (!isset($temp)) {
-			$temp = $this->tmp;
-		}
+	private function cleanup($temp) {
 		if (is_dir($temp)) {
-			chdir($this->cwd);
-			$this->info("Cleaning up %s ...\n", $temp);
 			$this->rm($temp);
+		} elseif (file_exists($temp)) {
+			unlink($temp);
 		}
 	}
 
-	/**
-	 * Construct a command from prefix common-name and suffix
-	 * @param type $suffix
-	 * @return string
-	 */
-	private function php($suffix) {
-		$cmd = $this->args["common-name"] . $suffix;
-		if (isset($this->args->prefix)) {
-			$cmd = $this->args->prefix . "/bin/" . $cmd;
-		}
-		return $cmd;
-	}
-
-	/**
-	 * Activate extension in php.ini
-	 */
-	private function activate() {
+	private function activate($temp) {
 		if ($this->args->ini) {
 			$files = [realpath($this->args->ini)];
 		} else {
@@ -233,60 +176,18 @@ class Installer implements Command
 			$files[] = php_ini_loaded_file();
 		}
 
-		$extension = basename(current(glob("modules/*.so")));
-		$pattern = preg_quote($extension);
+		$sudo = isset($this->args->sudo) ? $this->args->sudo : null;
 
-		foreach ($files as $index => $file) {
-			$temp = new Tempfile("phpini");
-			foreach (file($file) as $line) {
-				if (preg_match("/^\s*extension\s*=\s*[\"']?{$pattern}[\"']?\s*(;.*)?\$/", $line)) {
-					// already there
-					$this->info("Extension already activated\n");
-					return;
-				}
-				fwrite($temp->getStream(), $line);
+		try {
+			$this->info("Running INI activation ...\n");
+			$activate = new Task\Activate($temp, $files, $sudo);
+			if (!$activate->run($this->args->verbose)) {
+				$this->info("Extension already activated ...\n");
 			}
-		}
-
-		// not found, add extension line to the last process file
-		if (isset($temp, $file)) {
-			fprintf($temp->getStream(), "extension=%s\n", $extension);
-			$temp->closeStream();
-
-			$path = $temp->getPathname();
-			$stat = stat($file);
-
-			try {
-				$this->info("Running INI owner transfer ... ");
-				$ugid = sprintf("%d:%d", $stat["uid"], $stat["gid"]);
-				$cmd = new ExecCmd("chown", $this->args->verbose);
-				if (isset($this->args->sudo)) {
-					$cmd->setSu($this->args->sudo);
-				}
-				$cmd->run([$ugid, $path]);
-				$this->info("OK\n");
-				
-				$this->info("Running INI permission transfer ... ");
-				$perm = decoct($stat["mode"] & 0777);
-				$cmd = new ExecCmd("chmod", $this->args->verbose);
-				if (isset($this->args->sudo)) {
-					$cmd->setSu($this->args->sudo);
-				}
-				$cmd->run([$perm, $path]);
-				$this->info("OK\n");
-	
-				$this->info("Running INI activation ... ");
-				$cmd = new ExecCmd("mv", $this->args->verbose);
-				if (isset($this->args->sudo)) {
-					$cmd->setSu($this->args->sudo);
-				}
-				$cmd->run([$path, $file]);
-				$this->info("OK\n");
-			} catch (\Exception $e) {
-				$this->error("%s\n", $e->getMessage());
-				$this->error("%s\n", $cmd->getOutput());
-				exit(5);
-			}
+		} catch (\Exception $e) {
+			$this->error("%s\n", $e->getMessage());
+			$this->error("%s\n", $output);
+			exit(3);
 		}
 	}
 }

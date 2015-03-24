@@ -3,6 +3,7 @@
 namespace pharext\SourceDir;
 
 use pharext\Command;
+use pharext\Exception;
 use pharext\SourceDir;
 
 /**
@@ -38,7 +39,7 @@ class Pecl implements \IteratorAggregate, SourceDir
 		} elseif (realpath("$path/package.xml")) {
 			$sxe = simplexml_load_file("$path/package.xml");
 		} else {
-			throw new \Exception("Missing package.xml in $path");
+			throw new Exception("Missing package.xml in $path");
 		}
 		$sxe->registerXPathNamespace("pecl", $sxe->getDocNamespaces()[""]);
 		
@@ -46,14 +47,14 @@ class Pecl implements \IteratorAggregate, SourceDir
 		if (!isset($args->name)) {
 			$name = (string) $sxe->xpath("/pecl:package/pecl:name")[0];
 			foreach ($args->parse(2, ["--name", $name]) as $error) {
-				$cmd->error("%s\n", $error);
+				$cmd->warn("%s\n", $error);
 			}
 		}
 		
 		if (!isset($args->release)) {
 			$release = (string) $sxe->xpath("/pecl:package/pecl:version/pecl:release")[0];
 			foreach ($args->parse(2, ["--release", $release]) as $error) {
-				$cmd->error("%s\n", $error);
+				$cmd->warn("%s\n", $error);
 			}
 		}
 		
@@ -89,6 +90,7 @@ class Pecl implements \IteratorAggregate, SourceDir
 	 * @return string
 	 */
 	private static function loadHook($configure, $dependencies) {
+		require_once "pharext/Version.php";
 		return include __DIR__."/../../pharext_install.tpl.php";
 	}
 
@@ -106,7 +108,7 @@ class Pecl implements \IteratorAggregate, SourceDir
 						substr($b, strpos(".ext.phar", $b))
 					);
 				});
-				yield realpath($this->path."/".end($glob));
+				yield end($glob);
 			} else {
 				unset($dependencies[$key]);
 			}
@@ -132,17 +134,17 @@ class Pecl implements \IteratorAggregate, SourceDir
 	private function generateFiles() {
 		foreach ($this->generateHooks() as $file => $hook) {
 			if ($this->cmd->getArgs()->verbose) {
-				$this->cmd->info("Packaging %s\n", is_string($hook) ? $hook : $file);
+				$this->cmd->info("Packaging %s\n", is_scalar($hook) ? $hook : $file);
 			}
 			yield $file => $hook;
 		}
 		foreach ($this->sxe->xpath("//pecl:file") as $file) {
 			$path = $this->path ."/". $this->dirOf($file) ."/". $file["name"];
 			if ($this->cmd->getArgs()->verbose) {
-				$this->cmd->info("Packaging %s\n", $path);
+				$this->cmd->info("Packaging %s\n", substr($path, strlen($this->path)));
 			}
 			if (!($realpath = realpath($path))) {
-				$this->cmd->error("File %s does not exist", $path);
+				$this->cmd->warn("File %s does not exist", $path);
 			}
 			yield $realpath;
 		}

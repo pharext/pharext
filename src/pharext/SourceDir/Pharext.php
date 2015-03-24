@@ -3,6 +3,7 @@
 namespace pharext\SourceDir;
 
 use pharext\Command;
+use pharext\Exception;
 use pharext\SourceDir;
 
 /**
@@ -35,7 +36,7 @@ class Pharext implements \IteratorAggregate, SourceDir
 		
 		$callable = include "$path/pharext_package.php";
 		if (!is_callable($callable)) {
-			throw new \Exception("Package hook did not return a callable");
+			throw new Exception("Package hook did not return a callable");
 		}
 		$this->iter = $callable($cmd, $path);
 	}

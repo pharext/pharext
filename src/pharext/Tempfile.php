@@ -2,38 +2,56 @@
 
 namespace pharext;
 
+/**
+ * Create a new temporary file
+ */
 class Tempfile extends \SplFileInfo
 {
+	/**
+	 * @var resource
+	 */
 	private $handle;
-	
-	function __construct($prefix) {
+
+	/**
+	 * @param string $prefix uniqid() prefix
+	 * @param string $suffix e.g. file extension
+	 * @throws \pharext\Exception
+	 */
+	public function __construct($prefix, $suffix = ".tmp") {
 		$tries = 0;
-		/* PharData needs a dot in the filename, sure */
-		$temp = sys_get_temp_dir() . "/";
-		
 		$omask = umask(077);
 		do {
-			$path = $temp.uniqid($prefix).".tmp";
+			$path = new Tempname($prefix, $suffix);
 			$this->handle = fopen($path, "x");
 		} while (!is_resource($this->handle) && $tries++ < 10);
 		umask($omask);
 		
 		if (!is_resource($this->handle)) {
-			throw new \Exception("Could not create temporary file");
+			throw new Exception("Could not create temporary file");
 		}
 		
 		parent::__construct($path);
 	}
-	
-	function __destruct() {
+
+	/**
+	 * Unlink the file
+	 */
+	public function __destruct() {
 		@unlink($this->getPathname());
 	}
-	
-	function closeStream() {
+
+	/**
+	 * Close the stream
+	 */
+	public function closeStream() {
 		fclose($this->handle);
 	}
 
-	function getStream() {
+	/**
+	 * Retrieve the stream resource
+	 * @return resource
+	 */
+	public function getStream() {
 		return $this->handle;
 	}
 }

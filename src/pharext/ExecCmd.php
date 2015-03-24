@@ -2,6 +2,9 @@
 
 namespace pharext;
 
+/**
+ * Execute system command
+ */
 class ExecCmd
 {
 	/**
@@ -41,11 +44,6 @@ class ExecCmd
 	public function __construct($command, $verbose = false) {
 		$this->command = $command;
 		$this->verbose = $verbose;
-		
-		/* interrupt output stream */
-		if ($verbose) {
-			printf("\n");
-		}
 	}
 	
 	/**
@@ -65,7 +63,7 @@ class ExecCmd
 	private function suExec($command, &$output, &$status) {
 		if (!($proc = proc_open($command, [STDIN,["pipe","w"],["pipe","w"]], $pipes))) {
 			$status = -1;
-			throw new \Exception("Failed to run {$command}");
+			throw new Exception("Failed to run {$command}");
 		}
 		$stdout = $pipes[1];
 		$passwd = 0;
@@ -89,7 +87,7 @@ class ExecCmd
 	/**
 	 * Run the command
 	 * @param array $args
-	 * @throws \Exception
+	 * @throws \pharext\Exception
 	 */
 	public function run(array $args = null) {
 		$exec = escapeshellcmd($this->command);
@@ -112,7 +110,7 @@ class ExecCmd
 		}
 		
 		if ($this->status) {
-			throw new \Exception("Command {$this->command} failed ({$this->status})");
+			throw new Exception("Command {$this->command} failed ({$this->status})");
 		}
 	}
 	
@@ -121,7 +119,7 @@ class ExecCmd
 	 * @return int
 	 */
 	public function getStatus() {
-		return $status;
+		return $this->status;
 	}
 	
 	/**
