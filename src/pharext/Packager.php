@@ -57,7 +57,7 @@ class Packager implements Command
 				CliArgs::OPTIONAL|CliArgs::SINGLE|CliArgs::REQARG],
 			["E", "zend", "Mark as Zend Extension",
 				CliArgs::OPTIONAL|CliARgs::SINGLE|CliArgs::NOARG],
-			[null, "signature", "Dump pharext signature",
+			[null, "signature", "Show pharext signature",
 				CliArgs::OPTIONAL|CliArgs::SINGLE|CliArgs::NOARG|CliArgs::HALT],
 			[null, "license", "Show pharext license",
 				CliArgs::OPTIONAL|CliArgs::SINGLE|CliArgs::NOARG|CliArgs::HALT],

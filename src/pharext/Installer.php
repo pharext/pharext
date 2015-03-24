@@ -38,11 +38,13 @@ class Installer implements Command
 				"sudo -S %s"],
 			["i", "ini", "Activate in this php.ini instead of loaded default php.ini",
 				CliArgs::OPTIONAL|CliArgs::SINGLE|CliArgs::REQARG],
-			[null, "signature", "Dump package signature",
+			[null, "signature", "Show package signature",
 				CliArgs::OPTIONAL|CliArgs::SINGLE|CliArgs::NOARG|CliArgs::HALT],
 			[null, "license", "Show package license",
 				CliArgs::OPTIONAL|CliArgs::SINGLE|CliArgs::NOARG|CliArgs::HALT],
 			[null, "name", "Show package name",
+				CliArgs::OPTIONAL|CliArgs::SINGLE|CliArgs::NOARG|CliArgs::HALT],
+			[null, "date", "Show package release date",
 				CliArgs::OPTIONAL|CliArgs::SINGLE|CliArgs::NOARG|CliArgs::HALT],
 			[null, "release", "Show package release version",
 				CliArgs::OPTIONAL|CliArgs::SINGLE|CliArgs::NOARG|CliArgs::HALT],
@@ -104,7 +106,7 @@ class Installer implements Command
 			exit;
 		}
 		try {
-			foreach (["signature", "name", "license", "release", "version"] as $opt) {
+			foreach (["signature", "name", "date", "license", "release", "version"] as $opt) {
 				if ($this->args[$opt]) {
 					printf("%s\n", $this->metadata($opt));
 					exit;
