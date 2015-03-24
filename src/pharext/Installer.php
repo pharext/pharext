@@ -38,6 +38,16 @@ class Installer implements Command
 				"sudo -S %s"],
 			["i", "ini", "Activate in this php.ini instead of loaded default php.ini",
 				CliArgs::OPTIONAL|CliArgs::SINGLE|CliArgs::REQARG],
+			[null, "signature", "Dump package signature",
+				CliArgs::OPTIONAL|CliArgs::SINGLE|CliArgs::NOARG|CliArgs::HALT],
+			[null, "license", "Show package license",
+				CliArgs::OPTIONAL|CliArgs::SINGLE|CliArgs::NOARG|CliArgs::HALT],
+			[null, "name", "Show package name",
+				CliArgs::OPTIONAL|CliArgs::SINGLE|CliArgs::NOARG|CliArgs::HALT],
+			[null, "release", "Show package release version",
+				CliArgs::OPTIONAL|CliArgs::SINGLE|CliArgs::NOARG|CliArgs::HALT],
+			[null, "version", "Show pharext version",
+				CliArgs::OPTIONAL|CliArgs::SINGLE|CliArgs::NOARG|CliArgs::HALT],
 		]);
 	}
 	
@@ -92,6 +102,17 @@ class Installer implements Command
 			$this->header();
 			$this->help($prog);
 			exit;
+		}
+		try {
+			foreach (["signature", "name", "license", "release", "version"] as $opt) {
+				if ($this->args[$opt]) {
+					printf("%s\n", $this->metadata($opt));
+					exit;
+				}
+			}
+		} catch (\Exception $e) {
+			$this->error("%s\n", $e->getMessage());
+			exit(2);
 		}
 
 		foreach ($this->args->validate() as $error) {
@@ -177,16 +198,16 @@ class Installer implements Command
 		}
 
 		$sudo = isset($this->args->sudo) ? $this->args->sudo : null;
-
+		$type = $this->metadata("type") ?: "php";
+		
 		try {
 			$this->info("Running INI activation ...\n");
-			$activate = new Task\Activate($temp, $files, $sudo);
+			$activate = new Task\Activate($temp, $files, $type, $this->args->prefix, $this->args{"common-name"}, $sudo);
 			if (!$activate->run($this->args->verbose)) {
 				$this->info("Extension already activated ...\n");
 			}
 		} catch (\Exception $e) {
 			$this->error("%s\n", $e->getMessage());
-			$this->error("%s\n", $output);
 			exit(3);
 		}
 	}

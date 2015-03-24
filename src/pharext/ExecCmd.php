@@ -87,6 +87,7 @@ class ExecCmd
 	/**
 	 * Run the command
 	 * @param array $args
+	 * @return \pharext\ExecCmd self
 	 * @throws \pharext\Exception
 	 */
 	public function run(array $args = null) {
@@ -110,8 +111,10 @@ class ExecCmd
 		}
 		
 		if ($this->status) {
-			throw new Exception("Command {$this->command} failed ({$this->status})");
+			throw new Exception("Command {$exec} failed ({$this->status})");
 		}
+
+		return $this;
 	}
 	
 	/**

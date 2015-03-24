@@ -25,20 +25,39 @@ class Activate implements Task
 	/**
 	 * @var string
 	 */
+	private $type;
+
+	/**
+	 * @var string
+	 */
+	private $php_config;
+	
+	/**
+	 * @var string
+	 */
 	private $sudo;
 
 	/**
 	 * @param string $cwd working directory
 	 * @param array $inis custom INI or list of loaded/scanned INI files
+	 * @param string $type extension or zend_extension
+	 * @param string $prefix install prefix, e.g. /usr/local
+	 * @param string $common_name PHP programs common name, e.g. php5
 	 * @param string $sudo sudo command
 	 * @throws \pharext\Exception
 	 */
-	public function __construct($cwd, array $inis, $sudo = null) {
+	public function __construct($cwd, array $inis, $type = "extension", $prefix = null, $common_name = "php", $sudo = null) {
 		$this->cwd = $cwd;
+		$this->type = $type;
 		$this->sudo = $sudo;
 		if (!$this->inis = $inis) {
 			throw new Exception("No PHP INIs given");
 		}
+		$cmd = $common_name . "-config";
+		if (isset($prefix)) {
+			$cmd = $prefix . "/bin/" . $cmd;
+		}
+		$this->php_config = $cmd;
 	}
 
 	/**
@@ -47,12 +66,17 @@ class Activate implements Task
 	 */
 	public function run($verbose = false) {
 		$extension = basename(current(glob("{$this->cwd}/modules/*.so")));
-		$pattern = preg_quote($extension);
+
+		if ($this->type === "zend_extension") {
+			$pattern = preg_quote((new ExecCmd($this->php_config))->run(["--extension-dir"])->getOutput() . "/$extension", "/");
+		} else {
+			$pattern = preg_quote($extension, "/");
+		}
 
 		foreach ($this->inis as $file) {
 			$temp = new Tempfile("phpini");
 			foreach (file($file) as $line) {
-				if (preg_match("/^\s*extension\s*=\s*[\"']?{$pattern}[\"']?\s*(;.*)?\$/", $line)) {
+				if (preg_match("/^\s*{$this->type}\s*=\s*[\"']?{$pattern}[\"']?\s*(;.*)?\$/", $line)) {
 					return false;
 				}
 				fwrite($temp->getStream(), $line);
@@ -60,7 +84,7 @@ class Activate implements Task
 		}
 
 		/* not found; append to last processed file, which is the main by default */
-		fprintf($temp->getStream(), "extension=%s\n", $extension);
+		fprintf($temp->getStream(), $this->type . "=%s\n", $extension);
 		$temp->closeStream();
 
 		$path = $temp->getPathname();

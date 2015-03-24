@@ -55,11 +55,13 @@ class Packager implements Command
 				CliArgs::OPTIONAL|CliArgs::SINGLE|CliArgs::NOARG],
 			["S", "sign", "Sign the PHAR with a private key",
 				CliArgs::OPTIONAL|CliArgs::SINGLE|CliArgs::REQARG],
-			[null, "signature", "Dump signature",
+			["E", "zend", "Mark as Zend Extension",
+				CliArgs::OPTIONAL|CliARgs::SINGLE|CliArgs::NOARG],
+			[null, "signature", "Dump pharext signature",
 				CliArgs::OPTIONAL|CliArgs::SINGLE|CliArgs::NOARG|CliArgs::HALT],
-			[null, "license", "Show license",
+			[null, "license", "Show pharext license",
 				CliArgs::OPTIONAL|CliArgs::SINGLE|CliArgs::NOARG|CliArgs::HALT],
-			[null, "version", "Show version",
+			[null, "version", "Show pharext version",
 				CliArgs::OPTIONAL|CliArgs::SINGLE|CliArgs::NOARG|CliArgs::HALT],
 		]);
 	}
@@ -220,6 +222,7 @@ class Packager implements Command
 				"release" => $this->args->release,
 				"license" => @file_get_contents(current(glob($this->source->getBaseDir()."/LICENSE*"))),
 				"stub" => "pharext_installer.php",
+				"type" => $this->args->zend ? "zend_extension" : "extension",
 			]);
 			$file = (new Task\PharBuild($this->source, $meta))->run();
 

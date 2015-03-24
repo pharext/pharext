@@ -57,6 +57,13 @@ class Pecl implements \IteratorAggregate, SourceDir
 				$cmd->warn("%s\n", $error);
 			}
 		}
+		if (!isset($args->zend)) {
+			if ($sxe->xpath("/pecl:package/pecl:zendextsrcrelease")) {
+				foreach ($args->parse(1, ["--zend"]) as $error) {
+					$cmd->warn("%s\n", $error);
+				}
+			}
+		}
 		
 		$this->cmd = $cmd;
 		$this->sxe = $sxe;
