@@ -8,6 +8,27 @@ namespace pharext;
 interface Command
 {
 	/**
+	 * Argument error
+	 */
+	const EARGS = 1;
+	/**
+	 * Build error
+	 */
+	const EBUILD = 2;
+	/**
+	 * Signature error
+	 */
+	const ESIGN = 3;
+	/**
+	 * Extract/unpack error
+	 */
+	const EEXTRACT = 4;
+	/**
+	 * Install error
+	 */
+	const EINSTALL = 5;
+	
+	/**
 	 * Retrieve command line arguments
 	 * @return pharext\CliArgs
 	 */

@@ -76,22 +76,27 @@ class Installer implements Command
 	 * @see \pharext\Command::run()
 	 */
 	public function run($argc, array $argv) {
-		$list = new SplObjectStorage();
-		$phar = new Phar(Phar::running(false));
-		$temp = $this->extract($phar);
+		try {
+			$list = new SplObjectStorage();
+			$phar = new Phar(Phar::running(false));
+			$temp = $this->extract($phar);
 
-		foreach ($phar as $entry) {
-			$dep_file = $entry->getBaseName();
-			if (fnmatch("*.ext.phar*", $dep_file)) {
-				$dep_phar = new Phar("$temp/$dep_file");
-				$list[$dep_phar] = $this->extract($dep_phar);
+			foreach ($phar as $entry) {
+				$dep_file = $entry->getBaseName();
+				if (fnmatch("*.ext.phar*", $dep_file)) {
+					$dep_phar = new Phar("$temp/$dep_file");
+					$list[$dep_phar] = $this->extract($dep_phar);
+				}
 			}
-		}
-		/* the actual ext.phar at last */
-		$list[$phar] = $temp;
+			/* the actual ext.phar at last */
+			$list[$phar] = $temp;
 
-		/* installer hooks */
-		$hook = $this->hooks($list);
+			/* installer hooks */
+			$hook = $this->hooks($list);
+		} catch (\Exception $e) {
+			$this->error("%s\n", $e->getMessage());
+			exit(self::EEXTRACT);
+		}
 
 		/* standard arg stuff */
 		$errs = [];
@@ -114,7 +119,7 @@ class Installer implements Command
 			}
 		} catch (\Exception $e) {
 			$this->error("%s\n", $e->getMessage());
-			exit(2);
+			exit(self::EARGS);
 		}
 
 		foreach ($this->args->validate() as $error) {
@@ -131,23 +136,33 @@ class Installer implements Command
 			if (!$this->args["quiet"]) {
 				$this->help($prog);
 			}
-			exit(1);
+			exit(self::EARGS);
 		}
 
-		/* post process hooks */
-		foreach ($hook as $callback) {
-			if (is_callable($callback)) {
-				$callback($this);
+		try {
+			/* post process hooks */
+			foreach ($hook as $callback) {
+				if (is_callable($callback)) {
+					$callback($this);
+				}
 			}
+		} catch (\Exception $e) {
+			$this->error("%s\n", $e->getMessage());
+			exit(self::EARGS);
 		}
 
 		/* install packages */
-		foreach ($list as $phar) {
-			$this->info("Installing %s ...\n", basename($phar->getPath()));
-			$this->install($list[$phar]);
-			$this->activate($list[$phar]);
-			$this->cleanup($list[$phar]);
-			$this->info("Successfully installed %s!\n", basename($phar->getPath()));
+		try {
+			foreach ($list as $phar) {
+				$this->info("Installing %s ...\n", basename($phar->getPath()));
+				$this->install($list[$phar]);
+				$this->activate($list[$phar]);
+				$this->cleanup($list[$phar]);
+				$this->info("Successfully installed %s!\n", basename($phar->getPath()));
+			}
+		} catch (\Exception $e) {
+			$this->error("%s\n", $e->getMessage());
+			exit(self::EINSTALL);
 		}
 	}
 	
@@ -155,32 +170,26 @@ class Installer implements Command
 	 * Phpize + trinity
 	 */
 	private function install($temp) {
-		try {
-			// phpize
-			$this->info("Running phpize ...\n");
-			$phpize = new Task\Phpize($temp, $this->args->prefix, $this->args->{"common-name"});
-			$phpize->run($this->args->verbose);
+		// phpize
+		$this->info("Running phpize ...\n");
+		$phpize = new Task\Phpize($temp, $this->args->prefix, $this->args->{"common-name"});
+		$phpize->run($this->args->verbose);
 
-			// configure
-			$this->info("Running configure ...\n");
-			$configure = new Task\Configure($temp, $this->args->configure, $this->args->prefix, $this->args{"common-name"});
-			$configure->run($this->args->verbose);
-				
-			// make
-			$this->info("Running make ...\n");
-			$make = new Task\Make($temp);
-			$make->run($this->args->verbose);
+		// configure
+		$this->info("Running configure ...\n");
+		$configure = new Task\Configure($temp, $this->args->configure, $this->args->prefix, $this->args{"common-name"});
+		$configure->run($this->args->verbose);
 
-			// install
-			$this->info("Running make install ...\n");
-			$sudo = isset($this->args->sudo) ? $this->args->sudo : null;
-			$install = new Task\Make($temp, ["install"], $sudo);
-			$install->run($this->args->verbose);
-		
-		} catch (\Exception $e) {
-			$this->error("%s\n", $e->getMessage());
-			exit(2);
-		}
+		// make
+		$this->info("Running make ...\n");
+		$make = new Task\Make($temp);
+		$make->run($this->args->verbose);
+
+		// install
+		$this->info("Running make install ...\n");
+		$sudo = isset($this->args->sudo) ? $this->args->sudo : null;
+		$install = new Task\Make($temp, ["install"], $sudo);
+		$install->run($this->args->verbose);
 	}
 
 	private function cleanup($temp) {
@@ -202,15 +211,10 @@ class Installer implements Command
 		$sudo = isset($this->args->sudo) ? $this->args->sudo : null;
 		$type = $this->metadata("type") ?: "extension";
 		
-		try {
-			$this->info("Running INI activation ...\n");
-			$activate = new Task\Activate($temp, $files, $type, $this->args->prefix, $this->args{"common-name"}, $sudo);
-			if (!$activate->run($this->args->verbose)) {
-				$this->info("Extension already activated ...\n");
-			}
-		} catch (\Exception $e) {
-			$this->error("%s\n", $e->getMessage());
-			exit(3);
+		$this->info("Running INI activation ...\n");
+		$activate = new Task\Activate($temp, $files, $type, $this->args->prefix, $this->args{"common-name"}, $sudo);
+		if (!$activate->run($this->args->verbose)) {
+			$this->info("Extension already activated ...\n");
 		}
 	}
 }

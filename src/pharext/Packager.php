@@ -104,7 +104,7 @@ class Packager implements Command
 			}
 		} catch (\Exception $e) {
 			$this->error("%s\n", $e->getMessage());
-			exit(2);
+			exit(self::EARGS);
 		}
 
 		try {
@@ -141,7 +141,7 @@ class Packager implements Command
 			if (!$this->args["quiet"]) {
 				$this->help($prog);
 			}
-			exit(1);
+			exit(self::EARGS);
 		}
 		
 		$this->createPackage();
@@ -225,7 +225,12 @@ class Packager implements Command
 				"type" => $this->args->zend ? "zend_extension" : "extension",
 			]);
 			$file = (new Task\PharBuild($this->source, $meta))->run();
+		} catch (\Exception $e) {
+			$this->error("%s\n", $e->getMessage());
+			exit(self::EBUILD);
+		}
 
+		try {
 			if ($this->args->sign) {
 				$this->info("Using private key to sign phar ...\n");
 				$pass = (new Task\Askpass)->run($this->args->verbose);
@@ -235,7 +240,7 @@ class Packager implements Command
 
 		} catch (\Exception $e) {
 			$this->error("%s\n", $e->getMessage());
-			exit(4);
+			exit(self::ESIGN);
 		}
 
 		if ($this->args->gzip) {
@@ -286,7 +291,7 @@ class Packager implements Command
 
 		} catch (\Exception $e) {
 			$this->error("%s\n", $e->getMessage());
-			exit(4);
+			exit(self::EBUILD);
 		}
 	}
 }
