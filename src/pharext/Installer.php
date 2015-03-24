@@ -200,7 +200,7 @@ class Installer implements Command
 		}
 
 		$sudo = isset($this->args->sudo) ? $this->args->sudo : null;
-		$type = $this->metadata("type") ?: "php";
+		$type = $this->metadata("type") ?: "extension";
 		
 		try {
 			$this->info("Running INI activation ...\n");
