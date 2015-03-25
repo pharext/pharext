@@ -2,7 +2,6 @@
 
 namespace pharext\Task;
 
-use pharext\Exception;
 use pharext\Task;
 
 /**
