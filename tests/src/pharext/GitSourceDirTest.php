@@ -25,7 +25,7 @@ class GitSourceDirTest extends \PHPUnit_Framework_TestCase
 	protected $source;
 	
 	protected function setUp() {
-		$this->source = new SourceDir\Git(new Cmd, ".");
+		$this->source = new SourceDir\Git(".");
 	}
 	
 	public function testGetBaseDir() {

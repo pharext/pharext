@@ -3,6 +3,7 @@
 namespace pharext\SourceDir;
 
 use pharext\Command;
+use pharext\Cli\Args;
 use pharext\SourceDir;
 
 /**
@@ -10,12 +11,6 @@ use pharext\SourceDir;
  */
 class Git implements \IteratorAggregate, SourceDir
 {
-	/**
-	 * The Packager command
-	 * @var pharext\Command
-	 */
-	private $cmd;
-	
 	/**
 	 * Base directory
 	 * @var string
@@ -26,8 +21,7 @@ class Git implements \IteratorAggregate, SourceDir
 	 * @inheritdoc
 	 * @see \pharext\SourceDir::__construct()
 	 */
-	public function __construct(Command $cmd, $path) {
-		$this->cmd = $cmd;
+	public function __construct($path) {
 		$this->path = $path;
 	}
 
@@ -38,7 +32,29 @@ class Git implements \IteratorAggregate, SourceDir
 	public function getBaseDir() {
 		return $this->path;
 	}
-	
+
+	/**
+	 * @inheritdoc
+	 * @return array
+	 */
+	public function getPackageInfo() {
+		return [];
+	}
+
+	/**
+	 * @inheritdoc
+	 * @return array
+	 */
+	public function getArgs() {
+		return [];
+	}
+
+	/**
+	 * @inheritdoc
+	 */
+	public function setArgs(Args $args) {
+	}
+
 	/**
 	 * Generate a list of files by `git ls-files`
 	 * @return Generator
@@ -50,13 +66,7 @@ class Git implements \IteratorAggregate, SourceDir
 			$path = realpath($this->path);
 			while (!feof($pipe)) {
 				if (strlen($file = trim(fgets($pipe)))) {
-					if ($this->cmd->getArgs()->verbose) {
-						$this->cmd->info("Packaging %s\n", $file);
-					}
 					/* there may be symlinks, so no realpath here */
-					if (!file_exists("$path/$file")) {
-						$this->cmd->warn("File %s does not exist in %s\n", $file, $path);
-					}
 					yield "$path/$file";
 				}
 			}
@@ -64,7 +74,7 @@ class Git implements \IteratorAggregate, SourceDir
 		}
 		chdir($pwd);
 	}
-	
+
 	/**
 	 * Implements IteratorAggregate
 	 * @see IteratorAggregate::getIterator()

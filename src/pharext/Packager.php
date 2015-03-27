@@ -5,6 +5,7 @@ namespace pharext;
 use Phar;
 use pharext\Cli\Args as CliArgs;
 use pharext\Cli\Command as CliCommand;
+use pharext\Exception;
 
 /**
  * The extension packaging command executed by bin/pharext
@@ -71,11 +72,7 @@ class Packager implements Command
 	 */
 	function __destruct() {
 		foreach ($this->cleanup as $cleanup) {
-			if (is_dir($cleanup)) {
-				$this->rm($cleanup);
-			} elseif (file_exists($cleanup)) {
-				unlink($cleanup);
-			}
+			$cleanup->run();
 		}
 	}
 	
@@ -112,16 +109,7 @@ class Packager implements Command
 			 * so e.g. name and version can be overriden and CliArgs 
 			 * does not complain about missing arguments
 			 */
-			if ($this->args["source"]) {
-				$source = $this->localize($this->args["source"]);
-				if ($this->args["pecl"]) {
-					$this->source = new SourceDir\Pecl($this, $source);
-				} elseif ($this->args["git"]) {
-					$this->source = new SourceDir\Git($this, $source);
-				} else {
-					$this->source = new SourceDir\Pharext($this, $source);
-				}
-			}
+			$this->loadSource();
 		} catch (\Exception $e) {
 			$errs[] = $e->getMessage();
 		}
@@ -159,17 +147,17 @@ class Packager implements Command
 			$task = new Task\GitClone($source);
 		} else {
 			$task = new Task\StreamFetch($source, function($bytes_pct) {
-				$this->debug(" %3d%% [%s>%s] \r",
+				$this->info(" %3d%% [%s>%s] \r%s",
 					floor($bytes_pct*100),
 					str_repeat("=", round(50*$bytes_pct)),
-					str_repeat(" ", round(50*(1-$bytes_pct)))
+					str_repeat(" ", round(50*(1-$bytes_pct))),
+					$bytes_pct == 1 ? "\n":""
 				);
 			});
 		}
-		$local = $task->run($this->args->verbose);
-		$this->debug("\n");
+		$local = $task->run($this->verbosity());
 
-		$this->cleanup[] = $local;
+		$this->cleanup[] = new Task\Cleanup($local);
 		return $local;
 	}
 
@@ -182,9 +170,9 @@ class Packager implements Command
 		$this->debug("Extracting %s ...\n", $source);
 		
 		$task = new Task\Extract($source);
-		$dest = $task->run($this->args->verbose);
+		$dest = $task->run($this->verbosity());
 		
-		$this->cleanup[] = $dest;
+		$this->cleanup[] = new Task\Cleanup($dest);
 		return $dest;
 	}
 
@@ -196,19 +184,45 @@ class Packager implements Command
 	private function localize($source) {
 		if (!stream_is_local($source)) {
 			$source = $this->download($source);
-			$this->cleanup[] = $source;
+			$this->cleanup[] = new Task\Cleanup($source);
 		}
 		$source = realpath($source);
 		if (!is_dir($source)) {
 			$source = $this->extract($source);
-			$this->cleanup[] = $source;
+			$this->cleanup[] = new Task\Cleanup($source);
 			
 			if ($this->args->pecl) {
 				$this->debug("Sanitizing PECL dir ...\n");
-				$source = (new Task\PeclFixup($source))->run($this->args->verbose);
+				$source = (new Task\PeclFixup($source))->run($this->verbosity());
 			}
 		}
 		return $source;
+	}
+
+	/**
+	 * Load the source dir
+	 * @throws \pharext\Exception
+	 */
+	private function loadSource(){
+		if ($this->args["source"]) {
+			$source = $this->localize($this->args["source"]);
+
+			if ($this->args["pecl"]) {
+				$this->source = new SourceDir\Pecl($source);
+			} elseif ($this->args["git"]) {
+				$this->source = new SourceDir\Git($source);
+			} elseif (is_file("$source/parext_package.php")) {
+				$this->source = include "$source/pharext_package.php";
+			}
+
+			if (!$this->source instanceof SourceDir) {
+				throw new Exception("Unknown source dir $source");
+			}
+
+			foreach ($this->source->getPackageInfo() as $key => $val) {
+				$this->args->$key = $val;
+			}
+		}
 	}
 
 	/**
@@ -233,9 +247,9 @@ class Packager implements Command
 		try {
 			if ($this->args->sign) {
 				$this->info("Using private key to sign phar ...\n");
-				$pass = (new Task\Askpass)->run($this->args->verbose);
+				$pass = (new Task\Askpass)->run($this->verbosity());
 				$sign = new Task\PharSign($file, $this->args->sign, $pass);
-				$pkey = $sign->run($this->args->verbose);
+				$pkey = $sign->run($this->verbosity());
 			}
 
 		} catch (\Exception $e) {
@@ -247,13 +261,13 @@ class Packager implements Command
 			try {
 				$gzip = (new Task\PharCompress($file, Phar::GZ))->run();
 				$move = new Task\PharRename($gzip, $this->args->dest, $this->args->name ."-". $this->args->release);
-				$name = $move->run($this->args->verbose);
+				$name = $move->run($this->verbosity());
 
 				$this->info("Created gzipped phar %s\n", $name);
 
 				if ($this->args->sign) {
 					$sign = new Task\PharSign($name, $this->args->sign, $pass);
-					$sign->run($this->args->verbose)->exportPublicKey($name.".pubkey");
+					$sign->run($this->verbosity())->exportPublicKey($name.".pubkey");
 				}
 
 			} catch (\Exception $e) {
@@ -265,13 +279,13 @@ class Packager implements Command
 			try {
 				$bzip = (new Task\PharCompress($file, Phar::BZ2))->run();
 				$move = new Task\PharRename($bzip, $this->args->dest, $this->args->name ."-". $this->args->release);
-				$name = $move->run($this->args->verbose);
+				$name = $move->run($this->verbosity());
 
 				$this->info("Created bzipped phar %s\n", $name);
 
 				if ($this->args->sign) {
 					$sign = new Task\PharSign($name, $this->args->sign, $pass);
-					$sign->run($this->args->verbose)->exportPublicKey($name.".pubkey");
+					$sign->run($this->verbosity())->exportPublicKey($name.".pubkey");
 				}
 
 			} catch (\Exception $e) {
@@ -281,7 +295,7 @@ class Packager implements Command
 
 		try {
 			$move = new Task\PharRename($file, $this->args->dest, $this->args->name ."-". $this->args->release);
-			$name = $move->run($this->args->verbose);
+			$name = $move->run($this->verbosity());
 
 			$this->info("Created executable phar %s\n", $name);
 

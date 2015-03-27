@@ -110,15 +110,13 @@ trait Command
 	 * @see \pharext\Command::error()
 	 */
 	public function error($fmt) {
-		if (!$this->args->quiet) {
-			if (!isset($fmt)) {
-				$fmt = "%s\n";
-				$arg = error_get_last()["message"];
-			} else {
-				$arg = array_slice(func_get_args(), 1);
-			}
-			vfprintf(STDERR, "ERROR: $fmt", $arg);
+		if (!isset($fmt)) {
+			$fmt = "%s\n";
+			$arg = error_get_last()["message"];
+		} else {
+			$arg = array_slice(func_get_args(), 1);
 		}
+		vfprintf(STDERR, "ERROR: $fmt", $arg);
 	}
 
 	/**
@@ -183,21 +181,16 @@ trait Command
 	}
 	
 	/**
-	 * rm -r
-	 * @param string $dir
+	 * Verbosity
+	 * @return boolean
 	 */
-	private function rm($dir) {
-		foreach (scandir($dir) as $entry) {
-			if ($entry === "." || $entry === "..") {
-				continue;
-			} elseif (is_dir("$dir/$entry")) {
-				$this->rm("$dir/$entry");
-			} elseif (!unlink("$dir/$entry")) {
-				$this->warn(null);
-			}
-		}
-		if (!rmdir($dir)) {
-			$this->warn(null);
+	public function verbosity() {
+		if ($this->args->verbose) {
+			return true;
+		} elseif ($this->args->quiet) {
+			return false;
+		} else {
+			return null;
 		}
 	}
 }

@@ -3,24 +3,31 @@
 namespace pharext;
 
 /**
- * Source directory interface
+ * Source directory interface, which should yield file names to package on traversal
  */
 interface SourceDir extends \Traversable
 {
-	/**
-	 * Read the source directory
-	 * 
-	 * Note: Best practices are for others, but if you want to follow them, do
-	 * not put constructors in interfaces. Keep your complaints, I warned you.
-	 * 
-	 * @param Command $cmd
-	 * @param string $path
-	 */
-	public function __construct(Command $cmd, $path);
-	
 	/**
 	 * Retrieve the base directory
 	 * @return string
 	 */
 	public function getBaseDir();
+
+	/**
+	 * Retrieve gathered package info
+	 * @return array|Traversable
+	 */
+	public function getPackageInfo();
+
+	/**
+	 * Provide installer command line args
+	 * @return array|Traversable
+	 */
+	public function getArgs();
+
+	/**
+	 * Process installer command line args
+	 * @param \pharext\Cli\Args $args
+	 */
+	public function setArgs(Cli\Args $args);
 }

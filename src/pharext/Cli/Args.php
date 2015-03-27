@@ -67,24 +67,27 @@ class Args implements \ArrayAccess
 
 	/**
 	 * Compile the original spec
-	 * @param array $spec
+	 * @param array|Traversable $spec
 	 */
-	public function __construct(array $spec = null) {
-		$this->compile($spec);
+	public function __construct($spec = null) {
+		if (is_array($spec) || $spec instanceof Traversable) {
+			$this->compile($spec);
+		}
+		
 	}
 	
 	/**
 	 * Compile the original spec
-	 * @param array $spec
+	 * @param array|Traversable $spec
 	 * @return pharext\CliArgs self
 	 */
-	public function compile(array $spec = null) {
-		$this->orig = array_merge($this->orig, (array) $spec);
-		foreach ((array) $spec as $arg) {
+	public function compile($spec) {
+		foreach ($spec as $arg) {
 			if (isset($arg[0])) { 
 				$this->spec["-".$arg[0]] = $arg;
 			}
 			$this->spec["--".$arg[1]] = $arg;
+			$this->orig[] = $arg;
 		}
 		return $this;
 	}

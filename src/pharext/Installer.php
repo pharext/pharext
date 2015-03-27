@@ -55,20 +55,39 @@ class Installer implements Command
 	
 	private function extract(Phar $phar) {
 		$this->debug("Extracting %s ...\n", basename($phar->getPath()));
-		return (new Task\Extract($phar))->run($this->args->verbose);
+		return (new Task\Extract($phar))->run($this->verbosity());
 	}
-
+	
 	private function hooks(SplObjectStorage $phars) {
-		$hooks = [];
+		$hook = [];
 		foreach ($phars as $phar) {
-			if (isset($phar["pharext_install.php"])) {
-				$callable = include $phar["pharext_install.php"];
-				if (is_callable($callable)) {
-					$hooks[] = $callable($this);
+			if (isset($phar["pharext_package.php"])) {
+				$sdir = include $phar["pharext_package.php"];
+				if ($sdir instanceof SourceDir) {
+					$this->args->compile($sdir->getArgs());
+					$hook[] = $sdir;
 				}
 			}
 		}
-		return $hooks;
+		return $hook;
+	}
+
+	private function load() {
+		$list = new SplObjectStorage();
+		$phar = new Phar(Phar::running(false));
+		$temp = $this->extract($phar);
+
+		foreach ($phar as $entry) {
+			$dep_file = $entry->getBaseName();
+			if (fnmatch("*.ext.phar*", $dep_file)) {
+				$dep_phar = new Phar("$temp/$dep_file");
+				$list[$dep_phar] = $this->extract($dep_phar);
+			}
+		}
+		
+		/* the actual ext.phar at last */
+		$list[$phar] = $temp;
+		return $list;
 	}
 
 	/**
@@ -77,20 +96,8 @@ class Installer implements Command
 	 */
 	public function run($argc, array $argv) {
 		try {
-			$list = new SplObjectStorage();
-			$phar = new Phar(Phar::running(false));
-			$temp = $this->extract($phar);
-
-			foreach ($phar as $entry) {
-				$dep_file = $entry->getBaseName();
-				if (fnmatch("*.ext.phar*", $dep_file)) {
-					$dep_phar = new Phar("$temp/$dep_file");
-					$list[$dep_phar] = $this->extract($dep_phar);
-				}
-			}
-			/* the actual ext.phar at last */
-			$list[$phar] = $temp;
-
+			/* load the phar(s) */
+			$list = $this->load();
 			/* installer hooks */
 			$hook = $this->hooks($list);
 		} catch (\Exception $e) {
@@ -141,10 +148,8 @@ class Installer implements Command
 
 		try {
 			/* post process hooks */
-			foreach ($hook as $callback) {
-				if (is_callable($callback)) {
-					$callback($this);
-				}
+			foreach ($hook as $sdir) {
+				$sdir->setArgs($this->args);
 			}
 		} catch (\Exception $e) {
 			$this->error("%s\n", $e->getMessage());
@@ -173,31 +178,27 @@ class Installer implements Command
 		// phpize
 		$this->info("Running phpize ...\n");
 		$phpize = new Task\Phpize($temp, $this->args->prefix, $this->args->{"common-name"});
-		$phpize->run($this->args->verbose);
+		$phpize->run($this->verbosity());
 
 		// configure
 		$this->info("Running configure ...\n");
 		$configure = new Task\Configure($temp, $this->args->configure, $this->args->prefix, $this->args{"common-name"});
-		$configure->run($this->args->verbose);
+		$configure->run($this->verbosity());
 
 		// make
 		$this->info("Running make ...\n");
 		$make = new Task\Make($temp);
-		$make->run($this->args->verbose);
+		$make->run($this->verbosity());
 
 		// install
 		$this->info("Running make install ...\n");
 		$sudo = isset($this->args->sudo) ? $this->args->sudo : null;
 		$install = new Task\Make($temp, ["install"], $sudo);
-		$install->run($this->args->verbose);
+		$install->run($this->verbosity());
 	}
 
 	private function cleanup($temp) {
-		if (is_dir($temp)) {
-			$this->rm($temp);
-		} elseif (file_exists($temp)) {
-			unlink($temp);
-		}
+		(new Task\Cleanup($temp))->run();
 	}
 
 	private function activate($temp) {
@@ -213,7 +214,7 @@ class Installer implements Command
 		
 		$this->info("Running INI activation ...\n");
 		$activate = new Task\Activate($temp, $files, $type, $this->args->prefix, $this->args{"common-name"}, $sudo);
-		if (!$activate->run($this->args->verbose)) {
+		if (!$activate->run($this->verbosity())) {
 			$this->info("Extension already activated ...\n");
 		}
 	}

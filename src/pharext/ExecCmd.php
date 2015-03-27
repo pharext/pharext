@@ -57,16 +57,19 @@ class ExecCmd
 	/**
 	 * Execute a program with escalated privileges handling interactive password prompt
 	 * @param string $command
-	 * @param string $output
-	 * @param int $status
+	 * @param bool $verbose
+	 * @return int exit status
 	 */
-	private function suExec($command, &$output, &$status) {
+	private function suExec($command, $verbose = null) {
 		if (!($proc = proc_open($command, [STDIN,["pipe","w"],["pipe","w"]], $pipes))) {
-			$status = -1;
+			$this->status = -1;
 			throw new Exception("Failed to run {$command}");
 		}
+		
 		$stdout = $pipes[1];
 		$passwd = 0;
+		$checks = 10;
+
 		while (!feof($stdout)) {
 			$R = [$stdout]; $W = []; $E = [];
 			if (!stream_select($R, $W, $E, null)) {
@@ -74,14 +77,49 @@ class ExecCmd
 			}
 			$data = fread($stdout, 0x1000);
 			/* only check a few times */
-			if ($passwd++ < 10) {
+			if ($passwd < $checks) {
+				$passwd++;
 				if (stristr($data, "password")) {
+					$passwd = $checks + 1;
 					printf("\n%s", $data);
+					continue;
 				}
+			} elseif ($passwd > $checks) {
+				/* new line after pw entry */
+				printf("\n");
+				$passwd = $checks;
 			}
-			$output .= $data;
+			
+			if ($verbose === null) {
+				print $this->progress($data, 0);
+			} else {
+				if ($verbose) {
+					printf("%s\n", $data);
+				}
+				$this->output .= $data;
+			}
 		}
-		$status = proc_close($proc);
+		if ($verbose === null) {
+			$this->progress("", PHP_OUTPUT_HANDLER_FINAL);
+		}
+		return $this->status = proc_close($proc);
+	}
+
+	/**
+	 * Output handler that displays some progress while soaking output
+	 * @param string $string
+	 * @param int $flags
+	 * @return string
+	 */
+	private function progress($string, $flags) {
+		static $c = 0;
+		static $s = ["\\","|","/","-"];
+
+		$this->output .= $string;
+
+		return $flags & PHP_OUTPUT_HANDLER_FINAL
+			? "   \r"
+			: sprintf("  %s\r", $s[$c++ % count($s)]);
 	}
 
 	/**
@@ -97,13 +135,17 @@ class ExecCmd
 		}
 		
 		if ($this->sudo) {
-			$this->suExec(sprintf($this->sudo." 2>&1", $exec), $this->output, $this->status);
+			$this->suExec(sprintf($this->sudo." 2>&1", $exec), $this->verbose);
 		} elseif ($this->verbose) {
 			ob_start(function($s) {
 				$this->output .= $s;
 				return $s;
 			}, 1);
 			passthru($exec, $this->status);
+			ob_end_flush();
+		} elseif ($this->verbose !== false /* !quiet */) {
+			ob_start([$this, "progress"], 1);
+			passthru($exec . " 2>&1", $this->status);
 			ob_end_flush();
 		} else {
 			exec($exec ." 2>&1", $output, $this->status);

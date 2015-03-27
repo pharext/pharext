@@ -12,7 +12,7 @@ bin/pharext: src/* src/pharext/* src/pharext/*/*
 
 test:
 	@echo "Running tests ... "
-	@phpunit tests
+	@php -dphar.readonly=0 `which phpunit` tests
 	
 clean:
 	rm bin/pharext*

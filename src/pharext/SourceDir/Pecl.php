@@ -2,21 +2,16 @@
 
 namespace pharext\SourceDir;
 
-use pharext\Command;
+use pharext\Cli\Args;
 use pharext\Exception;
 use pharext\SourceDir;
+use pharext\Tempfile;
 
 /**
  * A PECL extension source directory containing a v2 package.xml
  */
 class Pecl implements \IteratorAggregate, SourceDir
 {
-	/**
-	 * The Packager command
-	 * @var pharext\Packager
-	 */
-	private $cmd;
-	
 	/**
 	 * The package.xml
 	 * @var SimpleXmlElement
@@ -28,44 +23,28 @@ class Pecl implements \IteratorAggregate, SourceDir
 	 * @var string
 	 */
 	private $path;
+
+	/**
+	 * The package.xml
+	 * @var string
+	 */
+	private $file;
 	
 	/**
 	 * @inheritdoc
 	 * @see \pharext\SourceDir::__construct()
 	 */
-	public function __construct(Command $cmd, $path) {
-		if (realpath("$path/package2.xml")) {
-			$sxe = simplexml_load_file("$path/package2.xml");
-		} elseif (realpath("$path/package.xml")) {
-			$sxe = simplexml_load_file("$path/package.xml");
+	public function __construct($path) {
+		if (is_file("$path/package2.xml")) {
+			$sxe = simplexml_load_file($this->file = "$path/package2.xml");
+		} elseif (is_file("$path/package.xml")) {
+			$sxe = simplexml_load_file($this->file = "$path/package.xml");
 		} else {
 			throw new Exception("Missing package.xml in $path");
 		}
+		
 		$sxe->registerXPathNamespace("pecl", $sxe->getDocNamespaces()[""]);
 		
-		$args = $cmd->getArgs();
-		if (!isset($args->name)) {
-			$name = (string) $sxe->xpath("/pecl:package/pecl:name")[0];
-			foreach ($args->parse(2, ["--name", $name]) as $error) {
-				$cmd->warn("%s\n", $error);
-			}
-		}
-		
-		if (!isset($args->release)) {
-			$release = (string) $sxe->xpath("/pecl:package/pecl:version/pecl:release")[0];
-			foreach ($args->parse(2, ["--release", $release]) as $error) {
-				$cmd->warn("%s\n", $error);
-			}
-		}
-		if (!isset($args->zend)) {
-			if ($sxe->xpath("/pecl:package/pecl:zendextsrcrelease")) {
-				foreach ($args->parse(1, ["--zend"]) as $error) {
-					$cmd->warn("%s\n", $error);
-				}
-			}
-		}
-		
-		$this->cmd = $cmd;
 		$this->sxe = $sxe;
 		$this->path = $path;
 	}
@@ -76,6 +55,58 @@ class Pecl implements \IteratorAggregate, SourceDir
 	 */
 	public function getBaseDir() {
 		return $this->path;
+	}
+
+	/**
+	 * Retrieve gathered package info
+	 * @return Generator
+	 */
+	public function getPackageInfo() {
+		if (($name = $this->sxe->xpath("/pecl:package/pecl:name"))) {
+			yield "name" => (string) $name[0];
+		}
+		if (($release = $this->sxe->xpath("/pecl:package/pecl:version/pecl:release"))) {
+			yield "release" => (string) $release[0];
+		}
+		if ($this->sxe->xpath("/pecl:package/pecl:zendextsrcrelease")) {
+			yield "zend" => true;
+		}
+	}
+
+	/**
+	 * @inheritdoc
+	 * @see \pharext\SourceDir::getArgs()
+	 */
+	public function getArgs() {
+		$configure = $this->sxe->xpath("/pecl:package/pecl:extsrcrelease/pecl:configureoption");
+		foreach ($configure as $cfg) {
+			yield [null, $cfg["name"], ucfirst($cfg["prompt"]), Args::OPTARG,
+				strlen($cfg["default"]) ? $cfg["default"] : null];
+		}
+		$configure = $this->sxe->xpath("/pecl:package/pecl:zendextsrcrelease/pecl:configureoption");
+		foreach ($configure as $cfg) {
+			yield [null, $cfg["name"], ucfirst($cfg["prompt"]), Args::OPTARG,
+				strlen($cfg["default"]) ? $cfg["default"] : null];
+		}
+	}
+
+	/**
+	 * @inheritdoc
+	 * @see \pharext\SourceDir::setArgs()
+	 */
+	public function setArgs(Args $args) {
+		$configure = $this->sxe->xpath("/pecl:package/pecl:extsrcrelease/pecl:configureoption");
+		foreach ($configure as $cfg) {
+			if (isset($args[$cfg["name"]])) {
+				$args->configure = "--{$cfg["name"]}={$args[$cfg["name"]]}";
+			}
+		}
+		$configure = $this->sxe->xpath("/pecl:package/pecl:zendextsrcrelease/pecl:configureoption");
+		foreach ($configure as $cfg) {
+			if (isset($args[$cfg["name"]])) {
+				$args->configure = "--{$cfg["name"]}={$args[$cfg["name"]]}";
+			}
+		}
 	}
 	
 	/**
@@ -92,20 +123,17 @@ class Pecl implements \IteratorAggregate, SourceDir
 	}
 
 	/**
-	 * Render installer hook
-	 * @param array $configure
-	 * @return string
+	 * Generate a list of files from the package.xml
+	 * @return Generator
 	 */
-	private static function loadHook($configure, $dependencies) {
-		require_once "pharext/Version.php";
-		return include __DIR__."/../../pharext_install.tpl.php";
-	}
+	private function generateFiles() {
+		/* hook  */
+		$temp = tmpfile();
+		fprintf($temp, "<?php\nreturn new %s(__DIR__);\n", get_class($this));
+		rewind($temp);
+		yield "pharext_package.php" => $temp;
 
-	/**
-	 * Create installer hook
-	 * @return \Generator
-	 */
-	private function generateHooks() {
+		/* deps */
 		$dependencies = $this->sxe->xpath("/pecl:package/pecl:dependencies/pecl:required/pecl:package");
 		foreach ($dependencies as $key => $dep) {
 			if (($glob = glob("{$this->path}/{$dep->name}-*.ext.phar*"))) {
@@ -116,44 +144,13 @@ class Pecl implements \IteratorAggregate, SourceDir
 					);
 				});
 				yield end($glob);
-			} else {
-				unset($dependencies[$key]);
 			}
 		}
-		$configure = $this->sxe->xpath("/pecl:package/pecl:extsrcrelease/pecl:configureoption");
-		if ($configure) {
-			$fd = tmpfile();
-			ob_start(function($s) use($fd){
-				fwrite($fd, $s);
-				return null;
-			});
-			self::loadHook($configure, $dependencies);
-			ob_end_flush();
-			rewind($fd);
-			yield "pharext_install.php" => $fd;
-		}
-	}
-	
-	/**
-	 * Generate a list of files from the package.xml
-	 * @return Generator
-	 */
-	private function generateFiles() {
-		foreach ($this->generateHooks() as $file => $hook) {
-			if ($this->cmd->getArgs()->verbose) {
-				$this->cmd->info("Packaging %s\n", is_scalar($hook) ? $hook : $file);
-			}
-			yield $file => $hook;
-		}
+
+		/* files */
+		yield $this->file;
 		foreach ($this->sxe->xpath("//pecl:file") as $file) {
-			$path = $this->path ."/". $this->dirOf($file) ."/". $file["name"];
-			if ($this->cmd->getArgs()->verbose) {
-				$this->cmd->info("Packaging %s\n", substr($path, strlen($this->path)));
-			}
-			if (!($realpath = realpath($path))) {
-				$this->cmd->warn("File %s does not exist", $path);
-			}
-			yield $realpath;
+			yield realpath($this->path ."/". $this->dirOf($file) ."/". $file["name"]);
 		}
 	}
 	
