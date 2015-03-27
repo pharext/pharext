@@ -7,68 +7,71 @@ Distribute your PHP extension as self-installable phar executable
 You don't need this package to install any `*.ext.phar` extension packages,
 just run them with php:
 
-	$ ./pecl_http-2.4.0dev.ext.phar
+	$ ./pecl_http-2.4.2.ext.phar
 
 For a compressed phar, or if the execute permission bit got lost somehow:
 
-	$ php pecl_http-2.4.0dev.ext.phar.gz
+	$ php pecl_http-2.4.2.ext.phar.gz
 
 Command help:
 
-	$ ./pecl_http-2.4.0dev.ext.phar -h
+	$ ./pecl_http-2.4.2.ext.phar -h
 
 Yields:
 
-	pharext v2.0.0 (c) Michael Wallner <mike@php.net>
+	pharext v3.0.0 (c) Michael Wallner <mike@php.net>
 
 	Usage:
 
-	  $ ./pecl_http-2.4.0dev.ext.phar [-hvqs] [-p|-n|-c|-i <arg>]
+	$ ./pecl_http-2.4.2.ext.phar [-hvqs] [-p|-n|-c|-i <arg>]
 
-		-h|--help                                  Display help
-		-v|--verbose                               More output
-		-q|--quiet                                 Less output
-		-p|--prefix <arg>                          PHP installation prefix if phpize is not in $PATH, e.g. /opt/php7
-		-n|--common-name <arg>                     PHP common program name, e.g. php5 or zts-php [php]
-		-c|--configure <arg>                       Additional extension configure flags, e.g. -c --with-flag
-		-s|--sudo [<arg>]                          Installation might need increased privileges [sudo -S %s]
-		-i|--ini <arg>                             Activate in this php.ini instead of loaded default php.ini
-		--enable-propro [<arg>]                    Whether to enable property proxy support [yes]
-		--enable-raphf [<arg>]                     Whether to enable raphf support [yes]
-		--with-http-zlib-dir [<arg>]               Where to find zlib [/usr]
-		--with-http-libcurl-dir [<arg>]            Where to find libcurl [/usr]
-		--with-http-libevent-dir [<arg>]           Where to find libevent [/usr]
+	  -h|--help                                  Display help
+	  -v|--verbose                               More output
+	  -q|--quiet                                 Less output
+	  -p|--prefix <arg>                          PHP installation prefix if phpize is not in $PATH, e.g. /opt/php7
+	  -n|--common-name <arg>                     PHP common program name, e.g. php5 or zts-php [php]
+	  -c|--configure <arg>                       Additional extension configure flags, e.g. -c --with-flag
+	  -s|--sudo [<arg>]                          Installation might need increased privileges [sudo -S %s]
+	  -i|--ini <arg>                             Activate in this php.ini instead of loaded default php.ini
+	  --signature                                Show package signature
+	  --license                                  Show package license
+	  --name                                     Show package name
+	  --date                                     Show package release date
+	  --release                                  Show package release version
+	  --version                                  Show pharext version
+	  --enable-propro [<arg>]                    Whether to enable property proxy support [yes]
+	  --enable-raphf [<arg>]                     Whether to enable raphf support [yes]
+	  --with-http-zlib-dir [<arg>]               Where to find zlib [/usr]
+	  --with-http-libcurl-dir [<arg>]            Where to find libcurl [/usr]
+	  --with-http-libevent-dir [<arg>]           Where to find libevent [/usr]
+
 
 If your installation destination needs escalated permissions, have a look at [the `--sudo` option](https://github.com/m6w6/pharext/wiki/Usage-of-*.ext.phar-packages#privileges):
 
-	$ ./pecl_http-2.4.0dev.ext.phar --ini /etc/php/conf.d/pecl.ini --sudo
-	Installing propro-1.0.1.ext.phar ... 
-	Running phpize ... OK
-	Running configure ... OK
-	Running make ... OK
-	Running install ... OK
-	Running INI owner transfer ... OK
-	Running INI permission transfer ... OK
-	Running INI activation ... OK
-	Cleaning up /tmp/propro-1.0.1.ext.phar.54fdbc828e3ef ...
-	Installing raphf-1.0.5.ext.phar ... 
-	Running phpize ... OK
-	Running configure ... OK
-	Running make ... OK
-	Running install ... OK
-	Running INI owner transfer ... OK
-	Running INI permission transfer ... OK
-	Running INI activation ... OK
-	Cleaning up /tmp/raphf-1.0.5.ext.phar.54fdbc828e5e0 ...
-	Installing pecl_http-2.4.0dev.ext.phar ... 
-	Running phpize ... OK
-	Running configure ... OK
-	Running make ... OK
-	Running install ... OK
-	Running INI owner transfer ... OK
-	Running INI permission transfer ... OK
-	Running INI activation ... OK
-	Cleaning up /tmp/pecl_http-2.4.0dev.ext.phar.54fdbc828e1fb ...
+	Installing propro-1.0.1.ext.phar ...
+	Running phpize ...
+	Running configure ...
+	Running make ...
+	Running make install ...
+	Running INI activation ...
+	Extension already activated ...
+	Successfully installed propro-1.0.1.ext.phar!
+	Installing raphf-1.0.5.ext.phar ...
+	Running phpize ...
+	Running configure ...
+	Running make ...
+	Running make install ...
+	Running INI activation ...
+	Extension already activated ...
+	Successfully installed raphf-1.0.5.ext.phar!
+	Installing pecl_http-2.4.2.ext.phar ...
+	Running phpize ...
+	Running configure ...
+	Running make ...
+	Running make install ...
+	Running INI activation ...
+	Extension already activated ...
+	Successfully installed pecl_http-2.4.2.ext.phar!
 
 
 ### Prerequisites
