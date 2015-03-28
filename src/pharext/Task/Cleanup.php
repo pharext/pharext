@@ -26,14 +26,17 @@ class Cleanup implements Task
 	 * @param bool $verbose
 	 */
 	public function run($verbose = false) {
-		if (is_dir($this->rm)) {
+		if ($this->rm instanceof Tempfile) {
+			unset($this->rm);
+		} elseif (is_dir($this->rm)) {
 			$rdi = new RecursiveDirectoryIterator($this->rm,
-				FilesystemIterator::CURRENT_AS_PATHNAME |
+				FilesystemIterator::CURRENT_AS_SELF | // needed for 5.5
+				FilesystemIterator::KEY_AS_PATHNAME |
 				FilesystemIterator::SKIP_DOTS);
 			$rii = new RecursiveIteratorIterator($rdi,
 				RecursiveIteratorIterator::CHILD_FIRST);
-			foreach ($rii as $path) {
-				if ($rii->isDir()) {
+			foreach ($rii as $path => $child) {
+				if ($child->isDir()) {
 					rmdir($path);
 				} else {
 					unlink($path);
