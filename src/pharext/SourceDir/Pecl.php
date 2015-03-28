@@ -46,7 +46,7 @@ class Pecl implements \IteratorAggregate, SourceDir
 		$sxe->registerXPathNamespace("pecl", $sxe->getDocNamespaces()[""]);
 		
 		$this->sxe = $sxe;
-		$this->path = $path;
+		$this->path = realpath($path);
 	}
 	
 	/**
@@ -148,7 +148,7 @@ class Pecl implements \IteratorAggregate, SourceDir
 		}
 
 		/* files */
-		yield $this->file;
+		yield realpath($this->file);
 		foreach ($this->sxe->xpath("//pecl:file") as $file) {
 			yield realpath($this->path ."/". $this->dirOf($file) ."/". $file["name"]);
 		}
