@@ -2,6 +2,8 @@
 
 namespace pharext;
 
+use pharext\Exception;
+
 /**
  * A temporary file/directory name
  */
@@ -17,7 +19,11 @@ class Tempname
 	 * @param string $suffix e.g. file extension
 	 */
 	public function __construct($prefix, $suffix = null) {
-		$this->name = sys_get_temp_dir() . "/" . uniqid($prefix) . $suffix;
+		$temp = sys_get_temp_dir() . "/pharext-" . posix_getlogin();
+		if (!is_dir($temp) && !mkdir($temp, 0700, true)) {
+			throw new Exception;
+		}
+		$this->name = $temp ."/". uniqid($prefix) . $suffix;
 	}
 
 	/**
