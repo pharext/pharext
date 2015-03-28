@@ -68,10 +68,27 @@ class PharBuild implements Task
 		$phar->buildFromIterator((new Task\BundleGenerator)->run());
 
 		if ($this->source) {
-			$phar->buildFromIterator($this->source, $this->source->getBaseDir());
+			if ($verbose) {
+				$bdir = $this->source->getBaseDir();
+				$blen = strlen($bdir);
+				foreach ($this->source as $index => $file) {
+					if (is_resource($file)) {
+						printf("Packaging %s ...\n", $index);
+					} else {
+						printf("Packaging %s ...\n", $index = trim(substr($file, $blen), "/"));
+					}
+					$phar[$index] = $file;
+				}
+			} else {
+				$phar->buildFromIterator($this->source, $this->source->getBaseDir());
+			}
 		}
 
 		$phar->stopBuffering();
+		
+		foreach (new \RecursiveIteratorIterator($phar) as $file) {
+			printf("Packaged %s ...\n", $file);
+		}
 
 		if (!chmod($temp, fileperms($temp) | 0111)) {
 			throw new Exception;
