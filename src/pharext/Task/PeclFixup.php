@@ -28,6 +28,9 @@ class PeclFixup implements Task
 	 * @throws \pahrext\Exception
 	 */
 	public function run($verbose = false) {
+		if ($verbose !== false) {
+			printf("Sanitizing PECL dir ...\n");
+		}
 		$dirs = glob("{$this->source}/*", GLOB_ONLYDIR);
 		$files = array_diff(glob("{$this->source}/*"), $dirs);
 
@@ -38,6 +41,9 @@ class PeclFixup implements Task
 		$dest = current($dirs);
 
 		foreach ($files as $file) {
+			if ($verbose) {
+				printf("Moving %s into %s ...\n", basename($file), basename($dest));
+			}
 			if (!rename($file, "$dest/" . basename($file))) {
 				throw new Exception;
 			}

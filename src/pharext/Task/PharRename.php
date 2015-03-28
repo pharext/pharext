@@ -44,6 +44,10 @@ class PharRename implements Task
 	public function run($verbose = false) {
 		$extension = substr(strstr($this->phar, "-pharext.phar"), 8);
 		$name = sprintf("%s/%s.ext%s", $this->dest, $this->name, $extension);
+		
+		if ($verbose) {
+			printf("Renaming %s to %s ...\n", basename($this->phar), basename($name));
+		}
 
 		if (!rename($this->phar, $name)) {
 			throw new Exception;

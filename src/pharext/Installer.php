@@ -16,6 +16,12 @@ class Installer implements Command
 	use CliCommand;
 	
 	/**
+	 * Cleanups
+	 * @var array
+	 */
+	private $cleanup = [];
+	
+	/**
 	 * Create the command
 	 */
 	public function __construct() {
@@ -53,9 +59,19 @@ class Installer implements Command
 		]);
 	}
 	
+	/**
+	 * Perform cleaniup
+	 */
+	function __destruct() {
+		foreach ($this->cleanup as $cleanup) {
+			$cleanup->run();
+		}
+	}
+	
 	private function extract(Phar $phar) {
-		$this->debug("Extracting %s ...\n", basename($phar->getPath()));
-		return (new Task\Extract($phar))->run($this->verbosity());
+		$temp = (new Task\Extract($phar))->run($this->verbosity());
+		$this->cleanup[] = new Task\Cleanup($temp);
+		return $temp;
 	}
 	
 	private function hooks(SplObjectStorage $phars) {
@@ -162,7 +178,6 @@ class Installer implements Command
 				$this->info("Installing %s ...\n", basename($phar->getPath()));
 				$this->install($list[$phar]);
 				$this->activate($list[$phar]);
-				$this->cleanup($list[$phar]);
 				$this->info("Successfully installed %s!\n", basename($phar->getPath()));
 			}
 		} catch (\Exception $e) {
@@ -176,29 +191,21 @@ class Installer implements Command
 	 */
 	private function install($temp) {
 		// phpize
-		$this->info("Running phpize ...\n");
 		$phpize = new Task\Phpize($temp, $this->args->prefix, $this->args->{"common-name"});
 		$phpize->run($this->verbosity());
 
 		// configure
-		$this->info("Running configure ...\n");
 		$configure = new Task\Configure($temp, $this->args->configure, $this->args->prefix, $this->args{"common-name"});
 		$configure->run($this->verbosity());
 
 		// make
-		$this->info("Running make ...\n");
 		$make = new Task\Make($temp);
 		$make->run($this->verbosity());
 
 		// install
-		$this->info("Running make install ...\n");
 		$sudo = isset($this->args->sudo) ? $this->args->sudo : null;
 		$install = new Task\Make($temp, ["install"], $sudo);
 		$install->run($this->verbosity());
-	}
-
-	private function cleanup($temp) {
-		(new Task\Cleanup($temp))->run();
 	}
 
 	private function activate($temp) {
@@ -212,7 +219,6 @@ class Installer implements Command
 		$sudo = isset($this->args->sudo) ? $this->args->sudo : null;
 		$type = $this->metadata("type") ?: "extension";
 		
-		$this->info("Running INI activation ...\n");
 		$activate = new Task\Activate($temp, $files, $type, $this->args->prefix, $this->args{"common-name"}, $sudo);
 		if (!$activate->run($this->verbosity())) {
 			$this->info("Extension already activated ...\n");

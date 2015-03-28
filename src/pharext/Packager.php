@@ -141,8 +141,6 @@ class Packager implements Command
 	 * @return string local source
 	 */
 	private function download($source) {
-		$this->info("Fetching remote source %s ...\n", $source);
-		
 		if ($this->args->git) {
 			$task = new Task\GitClone($source);
 		} else {
@@ -167,8 +165,6 @@ class Packager implements Command
 	 * @return string extracted directory
 	 */
 	private function extract($source) {
-		$this->debug("Extracting %s ...\n", $source);
-		
 		$task = new Task\Extract($source);
 		$dest = $task->run($this->verbosity());
 		
@@ -192,7 +188,6 @@ class Packager implements Command
 			$this->cleanup[] = new Task\Cleanup($source);
 			
 			if ($this->args->pecl) {
-				$this->debug("Sanitizing PECL dir ...\n");
 				$source = (new Task\PeclFixup($source))->run($this->verbosity());
 			}
 		}

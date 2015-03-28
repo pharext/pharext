@@ -41,6 +41,9 @@ class Phpize implements Task
 	 * @throws \pharext\Exception
 	 */
 	public function run($verbose = false) {
+		if ($verbose !== false) {
+			printf("Running %s ...\n", $this->phpize);
+		}
 		$pwd = getcwd();
 		if (!chdir($this->cwd)) {
 			throw new Exception;

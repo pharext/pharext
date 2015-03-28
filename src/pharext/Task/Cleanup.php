@@ -26,6 +26,9 @@ class Cleanup implements Task
 	 * @param bool $verbose
 	 */
 	public function run($verbose = false) {
+		if ($verbose) {
+			printf("Cleaning up %s ...\n", $this->rm);
+		}
 		if ($this->rm instanceof Tempfile) {
 			unset($this->rm);
 		} elseif (is_dir($this->rm)) {

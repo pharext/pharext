@@ -55,6 +55,9 @@ class PharCompress implements Task
 	 * @return string
 	 */
 	public function run($verbose = false) {
+		if ($verbose) {
+			printf("Compressing %s ...\n", basename($this->package->getPath()));
+		}
 		$phar = $this->package->compress($this->encoding);
 		$meta = $phar->getMetadata();
 		if (isset($meta["stub"])) {

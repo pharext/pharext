@@ -65,6 +65,9 @@ class Activate implements Task
 	 * @return boolean false, if extension was already activated
 	 */
 	public function run($verbose = false) {
+		if ($verbose !== false) {
+			printf("Running INI activation ...\n");
+		}
 		$extension = basename(current(glob("{$this->cwd}/modules/*.so")));
 
 		if ($this->type === "zend_extension") {
@@ -74,6 +77,9 @@ class Activate implements Task
 		}
 
 		foreach ($this->inis as $file) {
+			if ($verbose) {
+				printf("Checking %s ...\n", $file);
+			}
 			$temp = new Tempfile("phpini");
 			foreach (file($file) as $line) {
 				if (preg_match("/^\s*{$this->type}\s*=\s*[\"']?{$pattern}[\"']?\s*(;.*)?\$/", $line)) {
@@ -84,6 +90,9 @@ class Activate implements Task
 		}
 
 		/* not found; append to last processed file, which is the main by default */
+		if ($verbose) {
+			printf("Activating in %s ...\n", $file);
+		}
 		fprintf($temp->getStream(), $this->type . "=%s\n", $extension);
 		$temp->closeStream();
 
@@ -112,6 +121,10 @@ class Activate implements Task
 			$cmd->setSu($this->sudo);
 		}
 		$cmd->run([$path, $file]);
+		
+		if ($verbose) {
+			printf("Replaced %s ...\n", $file);
+		}
 
 		return true;
 	}

@@ -28,6 +28,9 @@ class GitClone implements Task
 	 * @return \pharext\Tempdir
 	 */
 	public function run($verbose = false) {
+		if ($verbose !== false) {
+			printf("Fetching %s ...\n", $this->source);
+		}
 		$local = new Tempdir("gitclone");
 		$cmd = new ExecCmd("git", $verbose);
 		$cmd->run(["clone", $this->source, $local]);

@@ -94,7 +94,7 @@ class ExecCmd
 				print $this->progress($data, 0);
 			} else {
 				if ($verbose) {
-					printf("%s\n", $data);
+					printf("%s", $data);
 				}
 				$this->output .= $data;
 			}
@@ -112,14 +112,18 @@ class ExecCmd
 	 * @return string
 	 */
 	private function progress($string, $flags) {
-		static $c = 0;
-		static $s = ["\\","|","/","-"];
+		static $counter = 0;
+		static $symbols = ["\\","|","/","-"];
 
 		$this->output .= $string;
+		
+		if (false !== strpos($string, "\n")) {
+			++$counter;
+		}
 
 		return $flags & PHP_OUTPUT_HANDLER_FINAL
 			? "   \r"
-			: sprintf("  %s\r", $s[$c++ % count($s)]);
+			: sprintf("  %s\r", $symbols[$counter % 4]);
 	}
 
 	/**

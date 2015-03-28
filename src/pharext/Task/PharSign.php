@@ -42,6 +42,9 @@ class PharSign implements Task
 	 * @return \pharext\Openssl\PrivateKey
 	 */
 	public function run($verbose = false) {
+		if ($verbose) {
+			printf("Signing %s ...\n", basename($this->phar->getPath()));
+		}
 		$this->pkey->sign($this->phar);
 		return $this->pkey;
 	}

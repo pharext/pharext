@@ -44,6 +44,15 @@ class Make implements Task
 	 * @throws \pharext\Exception
 	 */
 	public function run($verbose = false) {
+		if ($verbose !== false) {
+			printf("Running make");
+			if ($this->args) {
+				foreach ($this->args as $arg) {
+					printf(" %s", $arg);
+				}
+			}
+			printf(" ...\n");
+		}
 		$pwd = getcwd();
 		if (!chdir($this->cwd)) {
 			throw new Exception;

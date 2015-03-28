@@ -40,6 +40,9 @@ class Configure implements Task
 	}
 
 	public function run($verbose = false) {
+		if ($verbose !== false) {
+			printf("Running ./configure ...\n");
+		}
 		$pwd = getcwd();
 		if (!chdir($this->cwd)) {
 			throw new Exception;

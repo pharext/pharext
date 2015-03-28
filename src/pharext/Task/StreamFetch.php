@@ -55,6 +55,9 @@ class StreamFetch implements Task
 	 * @throws \pharext\Exception
 	 */
 	public function run($verbose = false) {
+		if ($verbose !== false) {
+			printf("Fetching %s ...\n", $this->source);
+		}
 		$context = $this->createStreamContext();
 
 		if (!$remote = fopen($this->source, "r", false, $context)) {

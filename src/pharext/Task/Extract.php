@@ -34,6 +34,9 @@ class Extract implements Task
 	 * @return \pharext\Tempdir
 	 */
 	public function run($verbose = false) {
+		if ($verbose) {
+			printf("Extracting %s ...\n", basename($this->source->getPath()));
+		}
 		$dest = new Tempdir("extract");
 		$this->source->extractTo($dest);
 		return $dest;
