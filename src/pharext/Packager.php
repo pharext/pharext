@@ -187,7 +187,7 @@ class Packager implements Command
 			$source = $this->extract($source);
 			$this->cleanup[] = new Task\Cleanup($source);
 			
-			if ($this->args->pecl) {
+			if (!$this->args->git) {
 				$source = (new Task\PeclFixup($source))->run($this->verbosity());
 			}
 		}
@@ -208,6 +208,8 @@ class Packager implements Command
 				$this->source = new SourceDir\Git($source);
 			} elseif (is_file("$source/parext_package.php")) {
 				$this->source = include "$source/pharext_package.php";
+			} else {
+				$this->source = new SourceDir\Basic($source);
 			}
 
 			if (!$this->source instanceof SourceDir) {

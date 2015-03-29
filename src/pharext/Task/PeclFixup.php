@@ -33,8 +33,11 @@ class PeclFixup implements Task
 		}
 		$dirs = glob("{$this->source}/*", GLOB_ONLYDIR);
 		$files = array_diff(glob("{$this->source}/*"), $dirs);
+		$check = array_reduce($files, function($r, $v) {
+			return $v && fnmatch("package*.xml", basename($v));
+		}, true);
 
-		if (count($dirs) !== 1 || !count($files)) {
+		if (count($dirs) !== 1 || !$check) {
 			throw new Exception("Does not look like an extracted PECL dir: {$this->source}");
 		}
 
