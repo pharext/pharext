@@ -40,11 +40,10 @@ class Basic implements IteratorAggregate, SourceDir
 				FilesystemIterator::KEY_AS_PATHNAME |
 				FilesystemIterator::SKIP_DOTS);
 		$rii = new RecursiveIteratorIterator($rdi,
-				RecursiveIteratorIterator::CHILD_FIRST);
-		return $rii;
+			RecursiveIteratorIterator::CHILD_FIRST);
 		foreach ($rii as $path => $child) {
 			if (!$child->isDir()) {
-				#yield $path;
+				yield $path;
 			}
 		}
 	}
