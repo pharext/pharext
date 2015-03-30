@@ -165,8 +165,15 @@ class Packager implements Command
 	 * @return string extracted directory
 	 */
 	private function extract($source) {
-		$task = new Task\Extract($source);
-		$dest = $task->run($this->verbosity());
+		try {
+			$task = new Task\Extract($source);
+			$dest = $task->run($this->verbosity());
+		} catch (\Exception $e) {
+			if (false === strpos($e->getMessage(), "checksum mismatch")) {
+				throw $e;
+			}
+			$dest = (new Task\PaxFixup($source))->run($this->verbosity());
+		}
 		
 		$this->cleanup[] = new Task\Cleanup($dest);
 		return $dest;
