@@ -74,10 +74,11 @@ class PharBuild implements Task
 				foreach ($this->source as $index => $file) {
 					if (is_resource($file)) {
 						printf("Packaging %s ...\n", $index);
+						$phar[$index] = $file;
 					} else {
 						printf("Packaging %s ...\n", $index = trim(substr($file, $blen), "/"));
+						$phar->addFile($file, $index);
 					}
-					$phar[$index] = $file;
 				}
 			} else {
 				$phar->buildFromIterator($this->source, $this->source->getBaseDir());
