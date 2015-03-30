@@ -213,7 +213,7 @@ class Packager implements Command
 				$this->source = new SourceDir\Pecl($source);
 			} elseif ($this->args["git"]) {
 				$this->source = new SourceDir\Git($source);
-			} elseif (is_file("$source/parext_package.php")) {
+			} elseif (is_file("$source/pharext_package.php")) {
 				$this->source = include "$source/pharext_package.php";
 			} else {
 				$this->source = new SourceDir\Basic($source);
