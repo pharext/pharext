@@ -2,4 +2,4 @@
 
 namespace pharext;
 
-const VERSION = "@PHAREXT_VERSION@";
+const VERSION = "3.0.0";
