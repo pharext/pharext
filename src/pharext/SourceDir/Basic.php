@@ -7,6 +7,7 @@ use pharext\SourceDir;
 
 use FilesystemIterator;
 use IteratorAggregate;
+use RecursiveCallbackFilterIterator;
 use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
 
@@ -33,14 +34,22 @@ class Basic implements IteratorAggregate, SourceDir
 	
 	public function setArgs(Args $args) {
 	}
+
+	public function filter($current, $key, $iterator) {
+		$sub = $current->getSubPath();
+		if ($sub === ".git" || $sub === ".hg" || $sub === ".svn") {
+			return false;
+		}
+		return true;
+	}
 	
 	public function getIterator() {
 		$rdi = new RecursiveDirectoryIterator($this->path,
 				FilesystemIterator::CURRENT_AS_SELF | // needed for 5.5
 				FilesystemIterator::KEY_AS_PATHNAME |
 				FilesystemIterator::SKIP_DOTS);
-		$rii = new RecursiveIteratorIterator($rdi,
-			RecursiveIteratorIterator::CHILD_FIRST);
+		$rci = new RecursiveCallbackFilterIterator($rdi, [$this, "filter"]);
+		$rii = new RecursiveIteratorIterator($rci);
 		foreach ($rii as $path => $child) {
 			if (!$child->isDir()) {
 				yield $path;

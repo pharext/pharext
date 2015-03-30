@@ -86,10 +86,6 @@ class PharBuild implements Task
 
 		$phar->stopBuffering();
 		
-		foreach (new \RecursiveIteratorIterator($phar) as $file) {
-			printf("Packaged %s ...\n", $file);
-		}
-
 		if (!chmod($temp, fileperms($temp) | 0111)) {
 			throw new Exception;
 		}
