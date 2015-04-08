@@ -144,13 +144,20 @@ class Packager implements Command
 		if ($this->args->git) {
 			$task = new Task\GitClone($source);
 		} else {
-			$task = new Task\StreamFetch($source, function($bytes_pct) {
-				$this->info(" %3d%% [%s>%s] \r%s",
-					floor($bytes_pct*100),
-					str_repeat("=", round(50*$bytes_pct)),
-					str_repeat(" ", round(50*(1-$bytes_pct))),
-					$bytes_pct == 1 ? "\n":""
-				);
+			/* print newline only once */
+			$done = false;
+			$task = new Task\StreamFetch($source, function($bytes_pct) use(&$done) {
+				if (!$done) {
+					$this->info(" %3d%% [%s>%s] \r",
+						floor($bytes_pct*100),
+						str_repeat("=", round(50*$bytes_pct)),
+						str_repeat(" ", round(50*(1-$bytes_pct)))
+					);
+					if ($bytes_pct == 1) {
+						$done = true;
+						printf("\n");
+					}
+				}
 			});
 		}
 		$local = $task->run($this->verbosity());
