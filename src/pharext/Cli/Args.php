@@ -176,6 +176,16 @@ class Args implements \ArrayAccess
 		}
 	}
 	
+
+	public function toArray() {
+		$args = [];
+		foreach ($this->spec as $spec) {
+			$opt = $this->opt($spec[1]);
+			$args[$opt] = $this[$opt];
+		}
+		return $args;
+	}
+
 	/**
 	 * Retreive the default argument of an option
 	 * @param string $o
