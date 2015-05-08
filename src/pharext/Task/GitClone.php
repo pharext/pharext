@@ -15,12 +15,18 @@ class GitClone implements Task
 	 * @var string
 	 */
 	private $source;
+	
+	/**
+	 * @var string
+	 */
+	private $branch;
 
 	/**
 	 * @param string $source git repo location
 	 */
-	public function __construct($source) {
+	public function __construct($source, $branch = null) {
 		$this->source = $source;
+		$this->branch = $branch;
 	}
 
 	/**
@@ -33,7 +39,11 @@ class GitClone implements Task
 		}
 		$local = new Tempdir("gitclone");
 		$cmd = new ExecCmd("git", $verbose);
-		$cmd->run(["clone", $this->source, $local]);
+		if (strlen($this->branch)) {
+			$cmd->run(["clone", "--depth", 1, "--branch", $this->branch, $this->source, $local]);
+		} else {
+			$cmd->run(["clone", $this->source, $local]);
+		}
 		return $local;
 	}
 }

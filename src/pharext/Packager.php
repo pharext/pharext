@@ -45,6 +45,8 @@ class Packager implements Command
 				CliArgs::REQUIRED|CliArgs::SINGLE|CliArgs::REQARG],
 			["g", "git", "Use `git ls-tree` to determine file list",
 				CliArgs::OPTIONAL|CliArgs::SINGLE|CliArgs::NOARG],
+			["b", "branch", "Checkout this tag/branch",
+				CliArgs::OPTIONAL|CliArgs::SINGLE|CliArgs::REQARG],
 			["p", "pecl", "Use PECL package.xml to determine file list, name and release",
 				CliArgs::OPTIONAL|CliArgs::SINGLE|CliArgs::NOARG],
 			["d", "dest", "Destination directory",
@@ -142,7 +144,7 @@ class Packager implements Command
 	 */
 	private function download($source) {
 		if ($this->args->git) {
-			$task = new Task\GitClone($source);
+			$task = new Task\GitClone($source, $this->args->branch);
 		} else {
 			/* print newline only once */
 			$done = false;
@@ -192,7 +194,7 @@ class Packager implements Command
 	 * @return string local source directory
 	 */
 	private function localize($source) {
-		if (!stream_is_local($source)) {
+		if (!stream_is_local($source) || ($this->args->git && isset($this->args->branch))) {
 			$source = $this->download($source);
 			$this->cleanup[] = new Task\Cleanup($source);
 		}
