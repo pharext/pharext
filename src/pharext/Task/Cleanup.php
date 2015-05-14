@@ -40,12 +40,12 @@ class Cleanup implements Task
 				RecursiveIteratorIterator::CHILD_FIRST);
 			foreach ($rii as $path => $child) {
 				if ($child->isDir()) {
-					rmdir($path);
+					@rmdir($path);
 				} else {
-					unlink($path);
+					@unlink($path);
 				}
 			}
-			rmdir($this->rm);
+			@rmdir($this->rm);
 		} else {
 			@unlink($this->rm);
 		}
