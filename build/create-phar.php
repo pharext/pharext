@@ -9,8 +9,6 @@ spl_autoload_register(function($c) {
 	return include strtr($c, "\\_", "//") . ".php";
 });
 
-require_once __DIR__."/../src/pharext/Version.php";
-
 $file = (new pharext\Task\PharBuild(null, pharext\Metadata::all() + [
 	"name" => "pharext",
 	"stub" => "pharext_packager.php",
