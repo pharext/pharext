@@ -5,13 +5,15 @@ namespace pharext\SourceDir;
 use pharext\Cli\Args;
 use pharext\Exception;
 use pharext\SourceDir;
-use pharext\Tempfile;
+use pharext\License;
 
 /**
  * A PECL extension source directory containing a v2 package.xml
  */
 class Pecl implements \IteratorAggregate, SourceDir
 {
+	use License;
+	
 	/**
 	 * The package.xml
 	 * @var SimpleXmlElement
@@ -71,6 +73,25 @@ class Pecl implements \IteratorAggregate, SourceDir
 		if ($this->sxe->xpath("/pecl:package/pecl:zendextsrcrelease")) {
 			yield "zend" => true;
 		}
+	}
+
+	/**
+	 * @inheritdoc
+	 * @return string
+	 */
+	public function getLicense() {
+		if (($license = $this->sxe->xpath("/pecl:package/pecl:license"))) {
+			if (($file = $this->findLicense($this->getBaseDir(), $license[0]["filesource"]))) {
+				return $this->readLicense($file);
+			}
+		}
+		if (($file = $this->findLicense($this->getBaseDir()))) {
+			return $this->readLicense($file);
+		}
+		if ($license) {
+			return $license[0] ." ". $license[0]["uri"];
+		}
+		return "UNKNOWN";
 	}
 
 	/**

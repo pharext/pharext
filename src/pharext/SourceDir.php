@@ -20,6 +20,12 @@ interface SourceDir extends \Traversable
 	public function getPackageInfo();
 
 	/**
+	 * Retrieve the full text license
+	 * @return string
+	 */
+	public function getLicense();
+
+	/**
 	 * Provide installer command line args
 	 * @return array|Traversable
 	 */

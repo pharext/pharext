@@ -2,8 +2,8 @@
 
 namespace pharext\SourceDir;
 
-use pharext\Command;
 use pharext\Cli\Args;
+use pharext\License;
 use pharext\SourceDir;
 
 /**
@@ -11,6 +11,8 @@ use pharext\SourceDir;
  */
 class Git implements \IteratorAggregate, SourceDir
 {
+	use License;
+	
 	/**
 	 * Base directory
 	 * @var string
@@ -39,6 +41,17 @@ class Git implements \IteratorAggregate, SourceDir
 	 */
 	public function getPackageInfo() {
 		return [];
+	}
+
+	/**
+	 * @inheritdoc
+	 * @return string
+	 */
+	public function getLicense() {
+		if (($file = $this->findLicense($this->getBaseDir()))) {
+			return $this->readLicense($file);
+		}
+		return "UNKNOWN";
 	}
 
 	/**

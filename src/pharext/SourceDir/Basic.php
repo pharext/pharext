@@ -3,6 +3,7 @@
 namespace pharext\SourceDir;
 
 use pharext\Cli\Args;
+use pharext\License;
 use pharext\SourceDir;
 
 use FilesystemIterator;
@@ -14,6 +15,8 @@ use RecursiveIteratorIterator;
 
 class Basic implements IteratorAggregate, SourceDir
 {
+	use License;
+	
 	private $path;
 	
 	public function __construct($path) {
@@ -28,6 +31,13 @@ class Basic implements IteratorAggregate, SourceDir
 		return [];
 	}
 	
+	public function getLicense() {
+		if (($file = $this->findLicense($this->getBaseDir()))) {
+			return $this->readLicense($file);
+		}
+		return "UNKNOWN";
+	}
+
 	public function getArgs() {
 		return [];
 	}
