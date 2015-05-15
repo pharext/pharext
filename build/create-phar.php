@@ -11,11 +11,8 @@ spl_autoload_register(function($c) {
 
 require_once __DIR__."/../src/pharext/Version.php";
 
-$file = (new pharext\Task\PharBuild(null, [
-	"header" => sprintf("pharext v%s (c) Michael Wallner <mike@php.net>", pharext\VERSION),
-	"version" => pharext\VERSION,
+$file = (new pharext\Task\PharBuild(null, pharext\Metadata::all() + [
 	"name" => "pharext",
-	"date" => date("Y-m-d"),
 	"stub" => "pharext_packager.php",
 	"license" => file_get_contents(__DIR__."/../LICENSE")
 ], false))->run();

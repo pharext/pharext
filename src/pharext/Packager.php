@@ -243,11 +243,16 @@ class Packager implements Command
 	 */
 	private function createPackage() {
 		try {
-			$meta = array_merge($this->metadata(), [
-				"date" => date("Y-m-d"),
+			if (($glob = glob($this->source->getBaseDir()."/LICENSE*"))) {
+				$license = file_get_contents(current($glob));
+			} else {
+				$this->warn("Could not find any LICENSE.* files!\n");
+				$license = "UNKNOWN\n";
+			}
+			$meta = array_merge(Metadata::all(), [
 				"name" => $this->args->name,
 				"release" => $this->args->release,
-				"license" => @file_get_contents(current(glob($this->source->getBaseDir()."/LICENSE*"))),
+				"license" => $license,
 				"stub" => "pharext_installer.php",
 				"type" => $this->args->zend ? "zend_extension" : "extension",
 			]);

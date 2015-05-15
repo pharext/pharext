@@ -21,11 +21,11 @@ release:
 	@echo "Previous Version: $$(git tag --list | tail -n1)"; \
 	read -p "Release Version:  v" VERSION; \
 	echo "Preparing release ... "; \
-	sed -e "s/@PHAREXT_VERSION@/$$VERSION/" build/Version.php.in > src/pharext/Version.php && \
+	sed -e "s/@dev-master/$$VERSION/" build/Metadata.php.in > src/pharext/Metadata.php && \
 	$(MAKE) -B SIGN=1 && \
 	git ci -am "release v$$VERSION" && \
 	git tag v$$VERSION && \
-	cp build/Version.php.in src/pharext/Version.php && \
+	cp build/Metadata.php.in src/pharext/Metadata.php && \
 	git ci -am "back to dev"
 
 .PHONY: all clean test release
