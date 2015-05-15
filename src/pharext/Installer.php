@@ -210,7 +210,7 @@ class Installer implements Command
 
 	private function activate($temp) {
 		if ($this->args->ini) {
-			$files = [realpath($this->args->ini)];
+			$files = [$this->args->ini];
 		} else {
 			$files = array_filter(array_map("trim", explode(",", php_ini_scanned_files())));
 			$files[] = php_ini_loaded_file();

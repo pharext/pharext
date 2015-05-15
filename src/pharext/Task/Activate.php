@@ -80,6 +80,9 @@ class Activate implements Task
 			if ($verbose) {
 				printf("Checking %s ...\n", $file);
 			}
+			if (!file_exists($file)) {
+				throw new Exception(sprintf("INI file '%s' does not exist", $file));
+			}
 			$temp = new Tempfile("phpini");
 			foreach (file($file) as $line) {
 				if (preg_match("/^\s*{$this->type}\s*=\s*[\"']?{$pattern}[\"']?\s*(;.*)?\$/", $line)) {
