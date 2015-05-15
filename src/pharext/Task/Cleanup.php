@@ -46,7 +46,7 @@ class Cleanup implements Task
 				}
 			}
 			@rmdir($this->rm);
-		} else {
+		} elseif (file_exists($this->rm)) {
 			@unlink($this->rm);
 		}
 	}
