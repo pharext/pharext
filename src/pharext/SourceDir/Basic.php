@@ -62,7 +62,7 @@ class Basic implements IteratorAggregate, SourceDir
 		$rii = new RecursiveIteratorIterator($rci);
 		foreach ($rii as $path => $child) {
 			if (!$child->isDir()) {
-				yield $path;
+				yield realpath($path);
 			}
 		}
 	}
