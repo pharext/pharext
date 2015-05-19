@@ -157,7 +157,7 @@ class Packager implements Command
 					);
 					if ($bytes_pct == 1) {
 						$done = true;
-						printf("\n");
+						$this->info("\n");
 					}
 				}
 			});
