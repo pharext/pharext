@@ -58,12 +58,10 @@ class PharCompress implements Task
 		if ($verbose) {
 			printf("Compressing %s ...\n", basename($this->package->getPath()));
 		}
+		/* stop shebang */
+		$stub = $this->package->getStub();
 		$phar = $this->package->compress($this->encoding);
-		$meta = $phar->getMetadata();
-		if (isset($meta["stub"])) {
-			/* drop shebang */
-			$phar->setDefaultStub($meta["stub"]);
-		}
+		$phar->setStub(substr($stub, strpos($stub, "\n")+1));
 		return $this->file . $this->extension;
 	}
 }

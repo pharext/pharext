@@ -2,6 +2,7 @@
 
 namespace pharext\Cli;
 
+use pharext\Archive;
 use pharext\Cli\Args as CliArgs;
 
 use Phar;
@@ -42,7 +43,11 @@ trait Command
 	 * @return mixed
 	 */
 	public function metadata($key = null) {
-		$running = new Phar(Phar::running(false));
+		if (extension_loaded("Phar")) {
+			$running = new Phar(Phar::running(false));
+		} else {
+			$running = new Archive(PHAREXT_PHAR);
+		}
 
 		if ($key === "signature") {
 			$sig = $running->getSignature();

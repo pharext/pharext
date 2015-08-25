@@ -247,10 +247,9 @@ class Packager implements Command
 				"name" => $this->args->name,
 				"release" => $this->args->release,
 				"license" => $this->source->getLicense(),
-				"stub" => "pharext_installer.php",
 				"type" => $this->args->zend ? "zend_extension" : "extension",
 			]);
-			$file = (new Task\PharBuild($this->source, $meta))->run($this->verbosity());
+			$file = (new Task\PharBuild($this->source, __DIR__."/../pharext_installer.php", $meta))->run($this->verbosity());
 		} catch (\Exception $e) {
 			$this->error("%s\n", $e->getMessage());
 			exit(self::EBUILD);

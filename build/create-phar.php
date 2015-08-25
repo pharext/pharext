@@ -4,14 +4,13 @@
  * Creates bin/pharext, invoked through the Makefile
  */
 
-set_include_path(dirname(__DIR__)."/src");
+set_include_path(dirname(__DIR__)."/src:".get_include_path());
 spl_autoload_register(function($c) {
 	return include strtr($c, "\\_", "//") . ".php";
 });
 
-$file = (new pharext\Task\PharBuild(null, pharext\Metadata::all() + [
+$file = (new pharext\Task\PharBuild(null, __DIR__."/../src/pharext_packager.php", pharext\Metadata::all() + [
 	"name" => "pharext",
-	"stub" => "pharext_packager.php",
 	"license" => file_get_contents(__DIR__."/../LICENSE")
 ], false))->run();
 

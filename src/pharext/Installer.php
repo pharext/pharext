@@ -68,7 +68,7 @@ class Installer implements Command
 		}
 	}
 	
-	private function extract(Phar $phar) {
+	private function extract($phar) {
 		$temp = (new Task\Extract($phar))->run($this->verbosity());
 		$this->cleanup[] = new Task\Cleanup($temp);
 		return $temp;
@@ -90,13 +90,17 @@ class Installer implements Command
 
 	private function load() {
 		$list = new SplObjectStorage();
-		$phar = new Phar(Phar::running(false));
+		$phar = extension_loaded("Phar") 
+			? new Phar(Phar::running(false))
+			: new Archive(PHAREXT_PHAR);
 		$temp = $this->extract($phar);
 
 		foreach ($phar as $entry) {
 			$dep_file = $entry->getBaseName();
 			if (fnmatch("*.ext.phar*", $dep_file)) {
-				$dep_phar = new Phar("$temp/$dep_file");
+				$dep_phar = extension_loaded("Phar")
+					? new Phar("$temp/$dep_file")
+					: new Archive("$temp/$dep_file");
 				$list[$dep_phar] = $this->extract($dep_phar);
 			}
 		}

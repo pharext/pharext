@@ -20,6 +20,11 @@ class PharBuild implements Task
 	private $source;
 
 	/**
+	 * @var string
+	 */
+	private $stub;
+
+	/**
 	 * @var array
 	 */
 	private $meta;
@@ -31,11 +36,13 @@ class PharBuild implements Task
 
 	/**
 	 * @param SourceDir $source extension source directory
+	 * @param string $stub path to phar stub
 	 * @param array $meta phar meta data
 	 * @param bool $readonly whether the stub has -dphar.readonly=1 set
 	 */
-	public function __construct(SourceDir $source = null, array $meta = null, $readonly = true) {
+	public function __construct(SourceDir $source = null, $stub, array $meta = null, $readonly = true) {
 		$this->source = $source;
+		$this->stub = $stub;
 		$this->meta = $meta;
 		$this->readonly = $readonly;
 	}
@@ -57,12 +64,12 @@ class PharBuild implements Task
 
 		if ($this->meta) {
 			$phar->setMetadata($this->meta);
-			if (isset($this->meta["stub"])) {
-				$phar->setDefaultStub($this->meta["stub"]);
-				$phar->setStub("#!/usr/bin/php -dphar.readonly=" .
-					intval($this->readonly) ."\n".
-					$phar->getStub());
-			}
+		}
+		if (is_file($this->stub)) {
+			$stub = preg_replace_callback('/^#include <([^>]+)>/m', function($includes) {
+				return file_get_contents($includes[1], true, null, 5);
+			}, file_get_contents($this->stub));
+			$phar->setStub($stub);
 		}
 
 		$phar->buildFromIterator((new Task\BundleGenerator)->run());
