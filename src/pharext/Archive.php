@@ -3,9 +3,13 @@
 namespace pharext;
 
 use ArrayAccess;
+use IteratorAggregate;
+use RecursiveDirectoryIterator;
+use SplFileInfo;
+
 use pharext\Exception;
 
-class Archive implements ArrayAccess
+class Archive implements ArrayAccess, IteratorAggregate
 {
 	const HALT_COMPILER = "\137\137\150\141\154\164\137\143\157\155\160\151\154\145\162\50\51\73";
 	const SIGNED = 0x10000;
@@ -62,12 +66,17 @@ class Archive implements ArrayAccess
 	}
 
 	function open($file) {
-		if (!$this->fd = @fopen($this->file = $file, "r")) {
+		if (!$this->fd = @fopen($file, "r")) {
 			throw new Exception;
 		}
+		$this->file = $file;
 		$this->stub = $this->readStub();
 		$this->manifest = $this->readManifest();
 		$this->signature = $this->readSignature();
+	}
+
+	function getIterator() {
+		return new RecursiveDirectoryIterator($this->extract());
 	}
 
 	function extract() {
@@ -80,30 +89,11 @@ class Archive implements ArrayAccess
 		}
 		foreach ($this->manifest["entries"] as $file => $entry) {
 			fseek($this->fd, $this->manifest["offset"]+$entry["offset"]);
-			$path = $dir."/$file";
-			$dirn = dirname($path);
-			if (!is_dir($dirn) && !@mkdir($dirn, 0777, true)) {
-				throw new Exception;
+			$path = "$dir/$file";
+			$copy = stream_copy_to_stream($this->fd, $this->outFd($path, $entry["flags"]), $entry["csize"]);
+			if ($entry["osize"] != $copy) {
+				throw new Exception("Copied '$copy' of '$file', expected '{$entry["osize"]}' from '{$entry["csize"]}");
 			}
-			if (!$fd = @fopen($path, "w")) {
-				throw new Exception;
-			}
-			switch ($entry["flags"] & self::COMP_FILE_MASK) {
-			case self::COMP_GZ_FILE:
-				if (!@stream_filter_append($fd, "zlib.inflate")) {
-					throw new Exception;
-				}
-				break;
-			case self::COMP_BZ2_FILE:
-				if (!@stream_filter_append($fd, "bz2.decompress")) {
-					throw new Exception;
-				}
-				break;
-			}
-			if ($entry["osize"] != ($copied = stream_copy_to_stream($this->fd, $fd, $entry["csize"]))) {
-				throw new Exception("Copied '$copied' of '$file', expected '{$entry["osize"]}' from '{$entry["csize"]}");
-			}
-			fclose($fd);
 
 			$crc = hexdec(hash_file("crc32b", $path));
 			if ($crc !== $entry["crc32"]) {
@@ -122,7 +112,7 @@ class Archive implements ArrayAccess
 
 	function offsetGet($o) {
 		$this->extract();
-		return new \SplFileInfo($this->extracted."/$o");
+		return new SplFileInfo($this->extracted."/$o");
 	}
 
 	function offsetSet($o, $v) {
@@ -143,7 +133,7 @@ class Archive implements ArrayAccess
 
 	function getPath() {
 		/* compatible with Phar::getPath() */
-		return new \SplFileInfo($this->file);
+		return new SplFileInfo($this->file);
 	}
 
 	function getMetadata($key = null) {
@@ -153,6 +143,63 @@ class Archive implements ArrayAccess
 		return $this->manifest["meta"];
 	}
 
+	private function outFd($path, $flags) {
+			$dirn = dirname($path);
+			if (!is_dir($dirn) && !@mkdir($dirn, 0777, true)) {
+				throw new Exception;
+			}
+			if (!$fd = @fopen($path, "w")) {
+				throw new Exception;
+			}
+			switch ($flags & self::COMP_FILE_MASK) {
+			case self::COMP_GZ_FILE:
+				if (!@stream_filter_append($fd, "zlib.inflate")) {
+					throw new Exception;
+				}
+				break;
+			case self::COMP_BZ2_FILE:
+				if (!@stream_filter_append($fd, "bz2.decompress")) {
+					throw new Exception;
+				}
+				break;
+			}
+
+	}
+	private function readVerified($fd, $len) {
+		if ($len != strlen($data = fread($fd, $len))) {
+			throw new Exception("Unexpected EOF");
+		}
+		return $data;
+	}
+
+	private function readFormat($format, $fd, $len) {
+		if (false === ($data = @unpack($format, $this->readVerified($fd, $len)))) {
+			throw new Exception;
+		}
+		return $data;
+	}
+
+	private function readSingleFormat($format, $fd, $len) {
+		return current($this->readFormat($format, $fd, $len));
+	}
+
+	private function readStringBinary($fd) {
+		if (($length = $this->readSingleFormat("V", $fd, 4))) {
+			return $this->readVerified($this->fd, $length);
+		}
+		return null;
+	}
+
+	private function readSerializedBinary($fd) {
+		if (($length = $this->readSingleFormat("V", $fd, 4))) {
+			if (false === ($data = unserialize($this->readVerified($fd, $length)))) {
+				throw new Exception;
+			}
+			return $data;
+		}
+		return null;
+	}
+
 	private function readStub() {
 		$stub = "";
 		while (!feof($this->fd)) {
@@ -160,7 +207,7 @@ class Archive implements ArrayAccess
 			$stub .= $line;
 			if (false !== stripos($line, self::HALT_COMPILER)) {
 				/* check for '?>' on a separate line */
-				if ('?>' === fread($this->fd, 2)) {
+				if ('?>' === $this->readVerified($this->fd, 2)) {
 					$stub .= '?>' . fgets($this->fd);
 				} else {
 					fseek($this->fd, -2, SEEK_CUR);
@@ -173,13 +220,9 @@ class Archive implements ArrayAccess
 
 	private function readManifest() {
 		$current = ftell($this->fd);
-		$header = unpack("Vlen/Vnum/napi/Vflags", fread($this->fd, 14));
-		if (($alias = current(unpack("V", fread($this->fd, 4))))) {
-			$alias = fread($this->fd, $alias);
-		}
-		if (($meta = current(unpack("V", fread($this->fd, 4))))) {
-			$meta = unserialize(fread($this->fd, $meta));
-		}
+		$header = $this->readFormat("Vlen/Vnum/napi/Vflags", $this->fd, 14);
+		$alias = $this->readStringBinary($this->fd);
+		$meta = $this->readSerializedBinary($this->fd);
 		$entries = [];
 		for ($i = 0; $i < $header["num"]; ++$i) {
 			$this->readEntry($entries);
@@ -198,24 +241,18 @@ class Archive implements ArrayAccess
 			$last = end($entries);
 			$offset = $last["offset"] + $last["csize"];
 		}
-		if (($file = current(unpack("V", fread($this->fd, 4))))) {
-			$file = fread($this->fd, $file);
-		}
-		if ($file === 0 || !strlen($file)) {
+		$file = $this->readStringBinary($this->fd);
+		if (!strlen($file)) {
 			throw new Exception("Empty file name encountered at offset '$offset'");
 		}
-		$header = unpack("Vosize/Vstamp/Vcsize/Vcrc32/Vflags", fread($this->fd, 20));
-		if (($meta = current(unpack("V", fread($this->fd, 4))))) {
-			$meta = unserialize(fread($this->fd, $meta));
-		} else {
-			$meta = [];
-		}
+		$header = $this->readFormat("Vosize/Vstamp/Vcsize/Vcrc32/Vflags", $this->fd, 20);
+		$meta = $this->readSerializedBinary($this->fd);
 		$entries[$file] =  $header + compact("meta", "offset");
 	}
 
 	private function readSignature() {
 		fseek($this->fd, -8, SEEK_END);
-		$sig = unpack("Vflags/Z4magic", fread($this->fd, 8));
+		$sig = $this->readFormat("Vflags/Z4magic", $this->fd, 8);
 		$end = ftell($this->fd);
 
 		if ($sig["magic"] !== "GBMB") {
@@ -225,13 +262,13 @@ class Archive implements ArrayAccess
  		switch ($sig["flags"]) {
 		case self::SIG_OPENSSL:
 			fseek($this->fd, -12, SEEK_END);
-			if (($hash = current(unpack("V", fread($this->fd, 4))))) {
+			if (($hash = $this->readSingleFormat("V", $this->fd, 4))) {
 				$offset = 4 + $hash;
 				fseek($this->fd, -$offset, SEEK_CUR);
-				$hash = fread($this->fd, $hash);
+				$hash = $this->readVerified($this->fd, $hash);
 				fseek($this->fd, 0, SEEK_SET);
-				$valid = openssl_verify(fread($this->fd, $end - $offset - 8),
-					$hash, file_get_contents($this->file.".pubkey")) === 1;
+				$valid = openssl_verify($this->readVerified($this->fd, $end - $offset - 8),
+					$hash, @file_get_contents($this->file.".pubkey")) === 1;
 			}
 			break;
 
@@ -241,7 +278,7 @@ class Archive implements ArrayAccess
 		case self::SIG_SHA512:
 			$offset = 8 + self::$siglen[$sig["flags"]];
 			fseek($this->fd, -$offset, SEEK_END);
-			$hash = fread($this->fd, self::$siglen[$sig["flags"]]);
+			$hash = $this->readVerified($this->fd, self::$siglen[$sig["flags"]]);
 			$algo = hash_init(self::$sigalg[$sig["flags"]]);
 			fseek($this->fd, 0, SEEK_SET);
 			hash_update_stream($algo, $this->fd, $end - $offset);
