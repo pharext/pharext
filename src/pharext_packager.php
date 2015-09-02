@@ -1,4 +1,4 @@
-#!/usr/bin/env php -dphar.readonly=0
+#!/usr/bin/php -dphar.readonly=0
 <?php
 
 /**
