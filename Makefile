@@ -2,13 +2,13 @@
 # build bin/pharext
 #
 
-all: bin/pharext
+all: bin/pharext bin/pharext.update
 
-bin/pharext: src/* src/pharext/* src/pharext/*/* src/pharext/*/*/*
+bin/%: build/%.php src/* src/pharext/* src/pharext/*/* src/pharext/*/*/*
 	@echo "Linting changed source files ... "
 	@for file in $?; do php -l $$file | sed -ne '/^No syntax errors/!p' && exit $${PIPESTATUS[0]}; done
-	@echo "Creating bin/pharext ... "
-	php -d phar.readonly=0 build/create-phar.php
+	@echo "Creating $@ ... "
+	php -d phar.readonly=0 $<
 
 test:
 	@echo "Running tests ... "

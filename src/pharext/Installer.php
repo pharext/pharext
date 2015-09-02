@@ -14,19 +14,19 @@ use SplObjectStorage;
 class Installer implements Command
 {
 	use CliCommand;
-	
+
 	/**
 	 * Cleanups
 	 * @var array
 	 */
 	private $cleanup = [];
-	
+
 	/**
 	 * Create the command
 	 */
 	public function __construct() {
 		$this->args = new CliArgs([
-			["h", "help", "Display help", 
+			["h", "help", "Display help",
 				CliArgs::OPTIONAL|CliArgs::SINGLE|CliArgs::NOARG|CliArgs::HALT],
 			["v", "verbose", "More output",
 				CliArgs::OPTIONAL|CliArgs::SINGLE|CliArgs::NOARG],
@@ -35,7 +35,7 @@ class Installer implements Command
 			["p", "prefix", "PHP installation prefix if phpize is not in \$PATH, e.g. /opt/php7",
 				CliArgs::OPTIONAL|CliArgs::SINGLE|CliArgs::REQARG],
 			["n", "common-name", "PHP common program name, e.g. php5 or zts-php",
-				CliArgs::OPTIONAL|CliArgs::SINGLE|CliArgs::REQARG, 
+				CliArgs::OPTIONAL|CliArgs::SINGLE|CliArgs::REQARG,
 				"php"],
 			["c", "configure", "Additional extension configure flags, e.g. -c --with-flag",
 				CliArgs::OPTIONAL|CliArgs::MULTI|CliArgs::REQARG],
@@ -58,7 +58,7 @@ class Installer implements Command
 				CliArgs::OPTIONAL|CliArgs::SINGLE|CliArgs::NOARG|CliArgs::HALT],
 		]);
 	}
-	
+
 	/**
 	 * Perform cleaniup
 	 */
@@ -67,13 +67,13 @@ class Installer implements Command
 			$cleanup->run();
 		}
 	}
-	
+
 	private function extract($phar) {
 		$temp = (new Task\Extract($phar))->run($this->verbosity());
 		$this->cleanup[] = new Task\Cleanup($temp);
 		return $temp;
 	}
-	
+
 	private function hooks(SplObjectStorage $phars) {
 		$hook = [];
 		foreach ($phars as $phar) {
@@ -90,7 +90,7 @@ class Installer implements Command
 
 	private function load() {
 		$list = new SplObjectStorage();
-		$phar = extension_loaded("Phar") 
+		$phar = extension_loaded("Phar")
 			? new Phar(Phar::running(false))
 			: new Archive(PHAREXT_PHAR);
 		$temp = $this->extract($phar);
@@ -104,7 +104,7 @@ class Installer implements Command
 				$list[$dep_phar] = $this->extract($dep_phar);
 			}
 		}
-		
+
 		/* the actual ext.phar at last */
 		$list[$phar] = $temp;
 		return $list;
@@ -189,7 +189,7 @@ class Installer implements Command
 			exit(self::EINSTALL);
 		}
 	}
-	
+
 	/**
 	 * Phpize + trinity
 	 */
@@ -199,7 +199,7 @@ class Installer implements Command
 		$phpize->run($this->verbosity());
 
 		// configure
-		$configure = new Task\Configure($temp, $this->args->configure, $this->args->prefix, $this->args{"common-name"});
+		$configure = new Task\Configure($temp, $this->args->configure, $this->args->prefix, $this->args->{"common-name"});
 		$configure->run($this->verbosity());
 
 		// make
@@ -222,7 +222,7 @@ class Installer implements Command
 
 		$sudo = isset($this->args->sudo) ? $this->args->sudo : null;
 		$type = $this->metadata("type") ?: "extension";
-		
+
 		$activate = new Task\Activate($temp, $files, $type, $this->args->prefix, $this->args{"common-name"}, $sudo);
 		if (!$activate->run($this->verbosity())) {
 			$this->info("Extension already activated ...\n");

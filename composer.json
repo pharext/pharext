@@ -4,5 +4,10 @@
 	"keywords": ["ext", "extension", "phar", "package", "install"],
 	"type": "project",
 	"license": "BSD-2-Clause",
-	"bin": ["bin/pharext", "bin/pharext.pubkey"]
+	"bin": [
+		"bin/pharext", 
+		"bin/pharext.pubkey",
+		"bin/pharext.update",
+		"bin/pharext.update.key"
+	]
 }

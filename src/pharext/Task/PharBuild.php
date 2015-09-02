@@ -65,11 +65,8 @@ class PharBuild implements Task
 		if ($this->meta) {
 			$phar->setMetadata($this->meta);
 		}
-		if (is_file($this->stub)) {
-			$stub = preg_replace_callback('/^#include <([^>]+)>/m', function($includes) {
-				return file_get_contents($includes[1], true, null, 5);
-			}, file_get_contents($this->stub));
-			$phar->setStub($stub);
+		if ($this->stub) {
+			(new PharStub($phar, $this->stub))->run($verbose);
 		}
 
 		$phar->buildFromIterator((new Task\BundleGenerator)->run());

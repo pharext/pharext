@@ -7,6 +7,6 @@ nbproject/
 *.phar
 *.phar.gz
 *.phar.bz2
-build/pharext.key
+build/*.key
 *.phar*
 *.pubkey
