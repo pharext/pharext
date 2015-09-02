@@ -49,7 +49,7 @@ Usage:
     -q|--quiet                   Less output
     -p|--prefix <arg>            PHP installation prefix if phpize is not in \$PATH, e.g. /opt/php7
     -n|--common-name <arg>       PHP common program name, e.g. php5 or zts-php [php]
-    -c|--configure <arg>         Additional extension configure flags, e.g. -c --with-flag
+    -c|--configure <arg>         Additional extension configure flags, e.g. -c --with-flag (MULTIPLE)
     -s|--sudo [<arg>]            Installation might need increased privileges [sudo -S %s]
 
 

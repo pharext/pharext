@@ -57,10 +57,10 @@ class TaskTest extends \PHPUnit_Framework_TestCase
 			"name" => "json_post",
 			"release" => "1.0.0",
 			"license" => file_get_contents($src->getBaseDir()."/LICENSE"),
-			"stub" => "pharext_installer.php",
 			"type" => "extension",
 		];
-		$pkg = (new Task\PharBuild($src, $inf))->run();
+		$stb = __DIR__."/../../../src/pharext_installer.php";
+		$pkg = (new Task\PharBuild($src, $stb, $inf))->run();
 		$gzp = (new Task\PharCompress($pkg, \Phar::GZ))->run();
 		$pkg = (new Task\PharRename($pkg, ".", "json_post-1.0.0"))->run();
 		$gzp = (new Task\PharRename($gzp, ".", "json_post-1.0.0"))->run();
