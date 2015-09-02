@@ -11,54 +11,54 @@ class Args implements \ArrayAccess
 	 * Optional option
 	 */
 	const OPTIONAL = 0x000;
-	
+
 	/**
 	 * Required Option
 	 */
 	const REQUIRED = 0x001;
-	
+
 	/**
 	 * Only one value, even when used multiple times
 	 */
 	const SINGLE = 0x000;
-	
+
 	/**
 	 * Aggregate an array, when used multiple times
 	 */
 	const MULTI = 0x010;
-	
+
 	/**
 	 * Option takes no argument
 	 */
 	const NOARG = 0x000;
-	
+
 	/**
 	 * Option requires an argument
 	 */
 	const REQARG = 0x100;
-	
+
 	/**
 	 * Option takes an optional argument
 	 */
 	const OPTARG = 0x200;
-	
+
 	/**
 	 * Option halts processing
 	 */
 	const HALT = 0x10000000;
-	
+
 	/**
 	 * Original option spec
 	 * @var array
 	 */
 	private $orig = [];
-	
+
 	/**
 	 * Compiled spec
 	 * @var array
 	 */
 	private $spec = [];
-	
+
 	/**
 	 * Parsed args
 	 * @var array
@@ -73,9 +73,9 @@ class Args implements \ArrayAccess
 		if (is_array($spec) || $spec instanceof Traversable) {
 			$this->compile($spec);
 		}
-		
+
 	}
-	
+
 	/**
 	 * Compile the original spec
 	 * @param array|Traversable $spec
@@ -83,15 +83,20 @@ class Args implements \ArrayAccess
 	 */
 	public function compile($spec) {
 		foreach ($spec as $arg) {
-			if (isset($arg[0])) { 
+			if (isset($arg[0]) && is_numeric($arg[0])) {
+				$arg[3] &= ~0xf00;
+				$this->spec["--".$arg[0]] = $arg;
+			} elseif (isset($arg[0])) {
 				$this->spec["-".$arg[0]] = $arg;
+				$this->spec["--".$arg[1]] = $arg;
+			} else {
+				$this->spec["--".$arg[1]] = $arg;
 			}
-			$this->spec["--".$arg[1]] = $arg;
 			$this->orig[] = $arg;
 		}
 		return $this;
 	}
-	
+
 	/**
 	 * Get original spec
 	 * @return array
@@ -99,7 +104,7 @@ class Args implements \ArrayAccess
 	public function getSpec() {
 		return $this->orig;
 	}
-	
+
 	/**
 	 * Get compiled spec
 	 * @return array
@@ -107,40 +112,52 @@ class Args implements \ArrayAccess
 	public function getCompiledSpec() {
 		return $this->spec;
 	}
-	
+
 	/**
 	 * Parse command line arguments according to the compiled spec.
-	 * 
+	 *
 	 * The Generator yields any parsing errors.
 	 * Parsing will stop when all arguments are processed or the first option
 	 * flagged CliArgs::HALT was encountered.
-	 * 
+	 *
 	 * @param int $argc
 	 * @param array $argv
 	 * @return Generator
 	 */
 	public function parse($argc, array $argv) {
-		for ($i = 0; $i < $argc; ++$i) {
+		for ($f = false, $p = 0, $i = 0; $i < $argc; ++$i) {
 			$o = $argv[$i];
-			
-			if ($o{0} === '-' && strlen($o) > 2 && $o{1} !== '-') {
-				// multiple short opts, .e.g -vps
+
+			if ($o{0} === "-" && strlen($o) > 2 && $o{1} !== "-") {
+				// multiple short opts, e.g. -vps
 				$argc += strlen($o) - 2;
 				array_splice($argv, $i, 1, array_map(function($s) {
 					return "-$s";
 				}, str_split(substr($o, 1))));
 				$o = $argv[$i];
-			} elseif ($o{0} === '-' && strlen($o) > 2 && $o{1} === '-' && 0 < ($eq = strpos($o, "="))) {
+			} elseif ($o{0} === "-" && strlen($o) > 2 && $o{1} === "-" && 0 < ($eq = strpos($o, "="))) {
+				// long opt with argument, e.g. --foo=bar
 				$argc++;
 				array_splice($argv, $i, 1, [
 					substr($o, 0, $eq++),
 					substr($o, $eq)
 				]);
 				$o = $argv[$i];
+			} elseif ($o === "--") {
+				// only positional args following
+				$f = true;
+				continue;
 			}
 
-			if (!isset($this->spec[$o])) {
-				yield sprintf("Unknown option %s", $o);
+			if ($f || !isset($this->spec[$o])) {
+				if ($o{0} !== "-" && isset($this->spec["--$p"])) {
+					$this[$p] = $o;
+					if (!$this->optIsMulti($p)) {
+						++$p;
+					}
+				} else {
+					yield sprintf("Unknown option %s", $o);
+				}
 			} elseif (!$this->optAcceptsArg($o)) {
 				$this[$o] = true;
 			} elseif ($i+1 < $argc && !isset($this->spec[$argv[$i+1]])) {
@@ -151,18 +168,18 @@ class Args implements \ArrayAccess
 				// OPTARG
 				$this[$o] = $this->optDefaultArg($o);
 			}
-			
+
 			if ($this->optHalts($o)) {
 				return;
 			}
 		}
 	}
-	
+
 	/**
 	 * Validate that all required options were given.
-	 * 
+	 *
 	 * The Generator yields any validation errors.
-	 * 
+	 *
 	 * @return Generator
 	 */
 	public function validate() {
@@ -170,12 +187,21 @@ class Args implements \ArrayAccess
 			return $spec[3] & self::REQUIRED;
 		});
 		foreach ($required as $req) {
-			if (!strlen($this[$req[0]])) {
+			if ($req[3] & self::MULTI) {
+				if (is_array($this[$req[0]])) {
+					continue;
+				}
+			} elseif (strlen($this[$req[0]])) {
+				continue;
+			}
+			if (is_numeric($req[0])) {
+				yield sprintf("Argument <%s> is required", $req[1]);
+			} else {
 				yield sprintf("Option --%s is required", $req[1]);
 			}
 		}
 	}
-	
+
 
 	public function toArray() {
 		$args = [];
@@ -198,7 +224,7 @@ class Args implements \ArrayAccess
 		}
 		return null;
 	}
-	
+
 	/**
 	 * Retrieve the help message of an option
 	 * @param string $o
@@ -224,7 +250,7 @@ class Args implements \ArrayAccess
 		}
 		return null;
 	}
-	
+
 	/**
 	 * Check whether an option is flagged for halting argument processing
 	 * @param string $o
@@ -233,7 +259,7 @@ class Args implements \ArrayAccess
 	private function optHalts($o) {
 		return $this->optFlags($o) & self::HALT;
 	}
-	
+
 	/**
 	 * Check whether an option needs an argument
 	 * @param string $o
@@ -242,7 +268,7 @@ class Args implements \ArrayAccess
 	private function optRequiresArg($o) {
 		return $this->optFlags($o) & self::REQARG;
 	}
-	
+
 	/**
 	 * Check wether an option accepts any argument
 	 * @param string $o
@@ -251,7 +277,7 @@ class Args implements \ArrayAccess
 	private function optAcceptsArg($o) {
 		return $this->optFlags($o) & 0xf00;
 	}
-	
+
 	/**
 	 * Check whether an option can be used more than once
 	 * @param string $o
@@ -260,7 +286,7 @@ class Args implements \ArrayAccess
 	private function optIsMulti($o) {
 		return $this->optFlags($o) & self::MULTI;
 	}
-	
+
 	/**
 	 * Retreive the long name of an option
 	 * @param string $o
@@ -268,9 +294,9 @@ class Args implements \ArrayAccess
 	 */
 	private function optLongName($o) {
 		$o = $this->opt($o);
-		return $this->spec[$o][1];
+		return is_numeric($this->spec[$o][0]) ? $this->spec[$o][0] : $this->spec[$o][1];
 	}
-	
+
 	/**
 	 * Retreive the short name of an option
 	 * @param string $o
@@ -278,15 +304,18 @@ class Args implements \ArrayAccess
 	 */
 	private function optShortName($o) {
 		$o = $this->opt($o);
-		return $this->spec[$o][0];
+		return is_numeric($this->spec[$o][0]) ? null : $this->spec[$o][0];
 	}
-	
+
 	/**
 	 * Retreive the canonical name (--long-name) of an option
 	 * @param string $o
 	 * @return string
 	 */
 	private function opt($o) {
+		if (is_numeric($o)) {
+			return "--$o";
+		}
 		if ($o{0} !== '-') {
 			if (strlen($o) > 1) {
 				$o = "-$o";
@@ -295,7 +324,7 @@ class Args implements \ArrayAccess
 		}
 		return $o;
 	}
-	
+
 	/**@+
 	 * Implements ArrayAccess and virtual properties
 	 */
