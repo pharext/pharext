@@ -82,8 +82,14 @@ class Updater implements Command
 		}
 
 		foreach ($this->args[0] as $file) {
-			if (file_exists($file)) {
-				$this->updatePackage(new SplFileInfo($file));
+			$info = new SplFileInfo($file);
+
+			while ($info->isLink()) {
+				$info = new SplFileInfo($info->getLinkTarget());
+			}
+			
+			if ($info->isFile()) {
+				$this->updatePackage($info);
 			} else {
 				$this->error("File '%s' does not exist\n", $file);
 				exit(self::EARGS);
@@ -122,6 +128,9 @@ class Updater implements Command
 		$temp = new Tempname("update", substr(strstr($file, ".ext.phar"), 4));
 
 		if (!copy($file->getPathname(), $temp)) {
+			throw new Exception;
+		}
+		if (!chmod($temp, $file->getPerms())) {
 			throw new Exception;
 		}
 		
