@@ -57,7 +57,7 @@ class Packager implements Command
 			["S", "sign", "Sign the PHAR with a private key",
 				Cli\Args::OPTIONAL|Cli\Args::SINGLE|Cli\Args::REQARG],
 			["E", "zend", "Mark as Zend Extension",
-				Cli\Args::OPTIONAL|CliARgs::SINGLE|Cli\Args::NOARG],
+				Cli\Args::OPTIONAL|Cli\Args::SINGLE|Cli\Args::NOARG],
 			[null, "signature", "Show pharext signature",
 				Cli\Args::OPTIONAL|Cli\Args::SINGLE|Cli\Args::NOARG|Cli\Args::HALT],
 			[null, "license", "Show pharext license",
