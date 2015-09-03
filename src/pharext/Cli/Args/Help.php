@@ -44,12 +44,10 @@ class Help
 		foreach ($this->args->getSpec() as $spec) {
 			if (is_numeric($spec[0])) {
 				$positional[] = $spec;
-			} elseif ($spec[3] & Args::REQARG) {
-				if ($spec[3] & Args::REQUIRED) {
-					$required[] = $spec;
-				} else {
-					$optional[] = $spec;
-				}
+			} elseif ($spec[3] & Args::REQUIRED) {
+				$required[] = $spec;
+			} elseif ($spec[3] & (Args::OPTARG|Args::REQARG)) {
+				$optional[] = $spec;
 			} else {
 				$flags[] = $spec;
 			}
@@ -72,21 +70,33 @@ class Help
 	}
 
 	function dumpOptional(array $optional) {
-		return sprintf(" [-%s <arg>]", implode("|-", array_column($optional, 0)));
+		$req = array_filter($optional, function($a) {
+			return $a[3] & Args::REQARG;
+		});
+		$opt = array_filter($optional, function($a) {
+			return $a[3] & Args::OPTARG;
+		});
+
+		$dump = "";
+		if ($req) {
+			$dump .= sprintf(" [-%s <arg>]", implode("|-", array_column($req, 0)));
+		}
+		if ($opt) {
+			$dump .= sprintf(" [-%s [<arg>]]", implode("|-", array_column($opt, 0)));
+		}
+		return $dump;
 	}
 
 	function dumpPositional(array $positional) {
 		$dump = " [--]";
 		foreach ($positional as $pos) {
-			if ($pos[3] & Args::MULTI) {
-				$multi = " ...";
-			} else {
-				$multi = "";
-			}
 			if ($pos[3] & Args::REQUIRED) {
-				$dump .= sprintf(" <%s%s>", $pos[1], $multi);
+				$dump .= sprintf(" <%s>", $pos[1]);
 			} else {
-				$dump .= sprintf(" [%s%s]", $pos[1], $multi);
+				$dump .= sprintf(" [<%s>]", $pos[1]);
+			}
+			if ($pos[3] & Args::MULTI) {
+				$dump .= sprintf(" [<%s>]...", $pos[1]);
 			}
 		}
 		return $dump;
@@ -101,7 +111,6 @@ class Help
 
 	function dumpHelp() {
 		$max = $this->calcMaxLen();
-		$parg = "";
 		$dump = "";
 		foreach ($this->args->getSpec() as $spec) {
 			$dump .= "    ";

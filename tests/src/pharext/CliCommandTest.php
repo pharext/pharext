@@ -42,7 +42,7 @@ class CliCommandTest extends \PHPUnit_Framework_TestCase
 		$this->expectOutputString(<<<EOF
 Usage:
 
-  $ testprog [-hvqs] [-p|-n|-c <arg>]
+  $ testprog [-hvq] [-p|-n|-c <arg>] [-s [<arg>]]
 
     -h|--help                    Display help
     -v|--verbose                 More output
