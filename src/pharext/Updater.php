@@ -121,7 +121,7 @@ class Updater implements Command
 		$phar->setMetadata([
 			"version" => Metadata::version(),
 			"header" => Metadata::header(),
-		] + $phar->getMetadata());
+		] + (array) $phar->getMetadata());
 
 		$this->info("Updated pharext version from '%s' to '%s'\n",
 			isset($meta["version"]) ? $meta["version"] : "(unknown)",
