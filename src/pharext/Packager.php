@@ -3,7 +3,6 @@
 namespace pharext;
 
 use Phar;
-use pharext\Cli\Command as CliCommand;
 use pharext\Exception;
 
 /**
@@ -11,7 +10,7 @@ use pharext\Exception;
  */
 class Packager implements Command
 {
-	use CliCommand;
+	use Cli\Command;
 	
 	/**
 	 * Extension source directory

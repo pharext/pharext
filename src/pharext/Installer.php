@@ -2,8 +2,6 @@
 
 namespace pharext;
 
-use pharext\Cli\Command as CliCommand;
-
 use Phar;
 use SplObjectStorage;
 
@@ -12,7 +10,7 @@ use SplObjectStorage;
  */
 class Installer implements Command
 {
-	use CliCommand;
+	use Cli\Command;
 
 	/**
 	 * Cleanups
