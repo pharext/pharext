@@ -109,6 +109,11 @@ class Updater implements Command
 		}
 		
 		$phar->stopBuffering();
+
+		$phar->setMetadata([
+			"version" => Metadata::version(),
+			"header" => Metadata::header(),
+		] + $phar->getMetadata());
 	}
 
 	private function updatePackage(SplFileInfo $file, Phar $phar = null) {
