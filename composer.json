@@ -8,7 +8,7 @@
 		"bin/pharext", 
 		"bin/pharext.pubkey",
 		"bin/pharext.update",
-		"bin/pharext.update.key"
+		"bin/pharext.update.pubkey"
 	],
 	"autoload": {
 		"psr-0": {
