@@ -4,8 +4,8 @@ namespace pharext;
 
 use Phar;
 use PharFileInfo;
-use RecursiveIteratorIterator;
 use SplFileInfo;
+use pharext\Exception;
 
 class Updater implements Command
 {
@@ -101,6 +101,8 @@ class Updater implements Command
 		$phar = new Phar($temp, Phar::CURRENT_AS_SELF);
 		$phar->startBuffering();
 
+		$meta = $phar->getMetadata();
+
 		// replace current pharext files
 		$core = (new Task\BundleGenerator)->run($this->verbosity());
 		$phar->buildFromIterator($core);
@@ -120,6 +122,10 @@ class Updater implements Command
 			"version" => Metadata::version(),
 			"header" => Metadata::header(),
 		] + $phar->getMetadata());
+
+		$this->info("Updated pharext version from '%s' to '%s'\n",
+			isset($meta["version"]) ? $meta["version"] : "(unknown)",
+			$phar->getMetadata()["version"]);
 	}
 
 	private function updatePackage(SplFileInfo $file, Phar $phar = null) {
