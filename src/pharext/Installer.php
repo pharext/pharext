@@ -2,7 +2,6 @@
 
 namespace pharext;
 
-use pharext\Cli\Args as CliArgs;
 use pharext\Cli\Command as CliCommand;
 
 use Phar;
@@ -25,37 +24,37 @@ class Installer implements Command
 	 * Create the command
 	 */
 	public function __construct() {
-		$this->args = new CliArgs([
+		$this->args = new Cli\Args([
 			["h", "help", "Display help",
-				CliArgs::OPTIONAL|CliArgs::SINGLE|CliArgs::NOARG|CliArgs::HALT],
+				Cli\Args::OPTIONAL|Cli\Args::SINGLE|Cli\Args::NOARG|Cli\Args::HALT],
 			["v", "verbose", "More output",
-				CliArgs::OPTIONAL|CliArgs::SINGLE|CliArgs::NOARG],
+				Cli\Args::OPTIONAL|Cli\Args::SINGLE|Cli\Args::NOARG],
 			["q", "quiet", "Less output",
-				CliArgs::OPTIONAL|CliArgs::SINGLE|CliArgs::NOARG],
+				Cli\Args::OPTIONAL|Cli\Args::SINGLE|Cli\Args::NOARG],
 			["p", "prefix", "PHP installation prefix if phpize is not in \$PATH, e.g. /opt/php7",
-				CliArgs::OPTIONAL|CliArgs::SINGLE|CliArgs::REQARG],
+				Cli\Args::OPTIONAL|Cli\Args::SINGLE|Cli\Args::REQARG],
 			["n", "common-name", "PHP common program name, e.g. php5 or zts-php",
-				CliArgs::OPTIONAL|CliArgs::SINGLE|CliArgs::REQARG,
+				Cli\Args::OPTIONAL|Cli\Args::SINGLE|Cli\Args::REQARG,
 				"php"],
 			["c", "configure", "Additional extension configure flags, e.g. -c --with-flag",
-				CliArgs::OPTIONAL|CliArgs::MULTI|CliArgs::REQARG],
+				Cli\Args::OPTIONAL|Cli\Args::MULTI|Cli\Args::REQARG],
 			["s", "sudo", "Installation might need increased privileges",
-				CliArgs::OPTIONAL|CliArgs::SINGLE|CliArgs::OPTARG,
+				Cli\Args::OPTIONAL|Cli\Args::SINGLE|Cli\Args::OPTARG,
 				"sudo -S %s"],
 			["i", "ini", "Activate in this php.ini instead of loaded default php.ini",
-				CliArgs::OPTIONAL|CliArgs::SINGLE|CliArgs::REQARG],
+				Cli\Args::OPTIONAL|Cli\Args::SINGLE|Cli\Args::REQARG],
 			[null, "signature", "Show package signature",
-				CliArgs::OPTIONAL|CliArgs::SINGLE|CliArgs::NOARG|CliArgs::HALT],
+				Cli\Args::OPTIONAL|Cli\Args::SINGLE|Cli\Args::NOARG|Cli\Args::HALT],
 			[null, "license", "Show package license",
-				CliArgs::OPTIONAL|CliArgs::SINGLE|CliArgs::NOARG|CliArgs::HALT],
+				Cli\Args::OPTIONAL|Cli\Args::SINGLE|Cli\Args::NOARG|Cli\Args::HALT],
 			[null, "name", "Show package name",
-				CliArgs::OPTIONAL|CliArgs::SINGLE|CliArgs::NOARG|CliArgs::HALT],
+				Cli\Args::OPTIONAL|Cli\Args::SINGLE|Cli\Args::NOARG|Cli\Args::HALT],
 			[null, "date", "Show package release date",
-				CliArgs::OPTIONAL|CliArgs::SINGLE|CliArgs::NOARG|CliArgs::HALT],
+				Cli\Args::OPTIONAL|Cli\Args::SINGLE|Cli\Args::NOARG|Cli\Args::HALT],
 			[null, "release", "Show package release version",
-				CliArgs::OPTIONAL|CliArgs::SINGLE|CliArgs::NOARG|CliArgs::HALT],
+				Cli\Args::OPTIONAL|Cli\Args::SINGLE|Cli\Args::NOARG|Cli\Args::HALT],
 			[null, "version", "Show pharext version",
-				CliArgs::OPTIONAL|CliArgs::SINGLE|CliArgs::NOARG|CliArgs::HALT],
+				Cli\Args::OPTIONAL|Cli\Args::SINGLE|Cli\Args::NOARG|Cli\Args::HALT],
 		]);
 	}
 

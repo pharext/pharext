@@ -79,7 +79,7 @@ class Args implements \ArrayAccess
 	/**
 	 * Compile the original spec
 	 * @param array|Traversable $spec
-	 * @return pharext\CliArgs self
+	 * @return pharext\Cli\Args self
 	 */
 	public function compile($spec) {
 		foreach ($spec as $arg) {
@@ -118,7 +118,7 @@ class Args implements \ArrayAccess
 	 *
 	 * The Generator yields any parsing errors.
 	 * Parsing will stop when all arguments are processed or the first option
-	 * flagged CliArgs::HALT was encountered.
+	 * flagged Cli\Args::HALT was encountered.
 	 *
 	 * @param int $argc
 	 * @param array $argv

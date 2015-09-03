@@ -3,7 +3,6 @@
 namespace pharext\Cli;
 
 use pharext\Archive;
-use pharext\Cli\Args as CliArgs;
 
 use Phar;
 
@@ -11,7 +10,7 @@ trait Command
 {
 	/**
 	 * Command line arguments
-	 * @var pharext\CliArgs
+	 * @var pharext\Cli\Args
 	 */
 	private $args;
 	

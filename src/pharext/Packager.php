@@ -3,7 +3,6 @@
 namespace pharext;
 
 use Phar;
-use pharext\Cli\Args as CliArgs;
 use pharext\Cli\Command as CliCommand;
 use pharext\Exception;
 
@@ -30,42 +29,42 @@ class Packager implements Command
 	 * Create the command
 	 */
 	public function __construct() {
-		$this->args = new CliArgs([
+		$this->args = new Cli\Args([
 			["h", "help", "Display this help",
-				CliArgs::OPTIONAL|CliArgs::SINGLE|CliArgs::NOARG|CliArgs::HALT],
+				Cli\Args::OPTIONAL|Cli\Args::SINGLE|Cli\Args::NOARG|Cli\Args::HALT],
 			["v", "verbose", "More output",
-				CliArgs::OPTIONAL|CliArgs::SINGLE|CliArgs::NOARG],
+				Cli\Args::OPTIONAL|Cli\Args::SINGLE|Cli\Args::NOARG],
 			["q", "quiet", "Less output",
-				CliArgs::OPTIONAL|CliArgs::SINGLE|CliArgs::NOARG],
+				Cli\Args::OPTIONAL|Cli\Args::SINGLE|Cli\Args::NOARG],
 			["n", "name", "Extension name",
-				CliArgs::REQUIRED|CliArgs::SINGLE|CliArgs::REQARG],
+				Cli\Args::REQUIRED|Cli\Args::SINGLE|Cli\Args::REQARG],
 			["r", "release", "Extension release version",
-				CliArgs::REQUIRED|CliArgs::SINGLE|CliArgs::REQARG],
+				Cli\Args::REQUIRED|Cli\Args::SINGLE|Cli\Args::REQARG],
 			["s", "source", "Extension source directory",
-				CliArgs::REQUIRED|CliArgs::SINGLE|CliArgs::REQARG],
+				Cli\Args::REQUIRED|Cli\Args::SINGLE|Cli\Args::REQARG],
 			["g", "git", "Use `git ls-tree` to determine file list",
-				CliArgs::OPTIONAL|CliArgs::SINGLE|CliArgs::NOARG],
+				Cli\Args::OPTIONAL|Cli\Args::SINGLE|Cli\Args::NOARG],
 			["b", "branch", "Checkout this tag/branch",
-				CliArgs::OPTIONAL|CliArgs::SINGLE|CliArgs::REQARG],
+				Cli\Args::OPTIONAL|Cli\Args::SINGLE|Cli\Args::REQARG],
 			["p", "pecl", "Use PECL package.xml to determine file list, name and release",
-				CliArgs::OPTIONAL|CliArgs::SINGLE|CliArgs::NOARG],
+				Cli\Args::OPTIONAL|Cli\Args::SINGLE|Cli\Args::NOARG],
 			["d", "dest", "Destination directory",
-				CliArgs::OPTIONAL|CliArgs::SINGLE|CliArgs::REQARG,
+				Cli\Args::OPTIONAL|Cli\Args::SINGLE|Cli\Args::REQARG,
 				"."],
 			["z", "gzip", "Create additional PHAR compressed with gzip",
-				CliArgs::OPTIONAL|CliArgs::SINGLE|CliArgs::NOARG],
+				Cli\Args::OPTIONAL|Cli\Args::SINGLE|Cli\Args::NOARG],
 			["Z", "bzip", "Create additional PHAR compressed with bzip",
-				CliArgs::OPTIONAL|CliArgs::SINGLE|CliArgs::NOARG],
+				Cli\Args::OPTIONAL|Cli\Args::SINGLE|Cli\Args::NOARG],
 			["S", "sign", "Sign the PHAR with a private key",
-				CliArgs::OPTIONAL|CliArgs::SINGLE|CliArgs::REQARG],
+				Cli\Args::OPTIONAL|Cli\Args::SINGLE|Cli\Args::REQARG],
 			["E", "zend", "Mark as Zend Extension",
-				CliArgs::OPTIONAL|CliARgs::SINGLE|CliArgs::NOARG],
+				Cli\Args::OPTIONAL|CliARgs::SINGLE|Cli\Args::NOARG],
 			[null, "signature", "Show pharext signature",
-				CliArgs::OPTIONAL|CliArgs::SINGLE|CliArgs::NOARG|CliArgs::HALT],
+				Cli\Args::OPTIONAL|Cli\Args::SINGLE|Cli\Args::NOARG|Cli\Args::HALT],
 			[null, "license", "Show pharext license",
-				CliArgs::OPTIONAL|CliArgs::SINGLE|CliArgs::NOARG|CliArgs::HALT],
+				Cli\Args::OPTIONAL|Cli\Args::SINGLE|Cli\Args::NOARG|Cli\Args::HALT],
 			[null, "version", "Show pharext version",
-				CliArgs::OPTIONAL|CliArgs::SINGLE|CliArgs::NOARG|CliArgs::HALT],
+				Cli\Args::OPTIONAL|Cli\Args::SINGLE|Cli\Args::NOARG|Cli\Args::HALT],
 		]);
 	}
 	
@@ -107,8 +106,8 @@ class Packager implements Command
 		}
 
 		try {
-			/* source needs to be evaluated before CliArgs validation, 
-			 * so e.g. name and version can be overriden and CliArgs 
+			/* source needs to be evaluated before Cli\Args validation, 
+			 * so e.g. name and version can be overriden and Cli\Args 
 			 * does not complain about missing arguments
 			 */
 			$this->loadSource();

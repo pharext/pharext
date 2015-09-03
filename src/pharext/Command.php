@@ -30,7 +30,7 @@ interface Command
 	
 	/**
 	 * Retrieve command line arguments
-	 * @return pharext\CliArgs
+	 * @return pharext\Cli\Args
 	 */
 	public function getArgs();
 	
