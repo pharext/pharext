@@ -7,20 +7,6 @@ use pharext\Cli\Args as CliArgs;
 
 use Phar;
 
-if (!function_exists("array_column")) {
-	function array_column(array $array, $col, $idx = null) {
-		$result = [];
-		foreach ($array as $el) {
-			if (isset($idx)) {
-				$result[$el[$idx]] = $el[$col];
-			} else {
-				$result[] = $el[$col];
-			}
-		}
-		return $result;
-	}
-}
-
 trait Command
 {
 	/**
