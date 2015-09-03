@@ -28,9 +28,4 @@ release:
 	cp build/Metadata.php.in src/pharext/Metadata.php && \
 	git ci -am "back to dev"
 
-archive-test: bin/pharext
-	./bin/pharext -vpgs ../apfd.git
-	-../php-5.5/sapi/cli/php ./apfd-1.0.1.ext.phar
-	-./apfd-1.0.1.ext.phar
-
 .PHONY: all clean test release
