@@ -10,3 +10,4 @@ nbproject/
 build/*.key
 *.phar*
 *.pubkey
+vendor
