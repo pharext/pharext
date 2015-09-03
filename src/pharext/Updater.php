@@ -33,7 +33,7 @@ class Updater implements Command
 		]);
 	}
 
-		/**
+	/**
 	 * @inheritdoc
 	 * @see \pharext\Command::run()
 	 */
@@ -89,7 +89,9 @@ class Updater implements Command
 			}
 			
 			if ($info->isFile()) {
-				$this->updatePackage($info);
+				if (!$this->updatePackage($info)) {
+					$this->warn("Cannot upgrade pre-v3 packages\n");
+				}
 			} else {
 				$this->error("File '%s' does not exist\n", $file);
 				exit(self::EARGS);
@@ -97,11 +99,19 @@ class Updater implements Command
 		}
 	}
 
+	/**
+	 * Replace the pharext core in an .ext.phar package
+	 * @param string $temp path to temp phar
+	 * @return boolean FALSE if the package is too old (pre-v3) to upgrade
+	 */
 	private function replacePharext($temp) {
 		$phar = new Phar($temp, Phar::CURRENT_AS_SELF);
 		$phar->startBuffering();
 
-		$meta = $phar->getMetadata();
+		if (!$meta = $phar->getMetadata()) {
+			// don't upgrade pre-v3 packages
+			return false;
+		}
 
 		// replace current pharext files
 		$core = (new Task\BundleGenerator)->run($this->verbosity());
@@ -121,13 +131,22 @@ class Updater implements Command
 		$phar->setMetadata([
 			"version" => Metadata::version(),
 			"header" => Metadata::header(),
-		] + (array) $phar->getMetadata());
+		] + $meta);
 
 		$this->info("Updated pharext version from '%s' to '%s'\n",
 			isset($meta["version"]) ? $meta["version"] : "(unknown)",
 			$phar->getMetadata()["version"]);
+
+		return true;
 	}
 
+	/**
+	 * Update an .ext.phar package to the current pharext version
+	 * @param SplFileInfo $file
+	 * @param Phar $phar the parent phar containing $file as dependency
+	 * @return boolean FALSE if the package is too old (pre-v3) to upgrade
+	 * @throws Exception
+	 */
 	private function updatePackage(SplFileInfo $file, Phar $phar = null) {
 		$this->info("Updating pharext core in '%s'...\n", basename($file));
 
@@ -140,12 +159,16 @@ class Updater implements Command
 			throw new Exception;
 		}
 		
-		$this->replacePharext($temp);
+		if (!$this->replacePharext($temp)) {
+			return false;
+		}
 
 		if ($phar) {
 			$phar->addFile($temp, $file);
 		} elseif (!rename($temp, $file->getPathname())) {
 			throw new Exception;
 		}
+
+		return true;
 	}
 }
