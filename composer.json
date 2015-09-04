@@ -14,5 +14,6 @@
 		"psr-0": {
 			"pharext": "src"
 		}
-	}
+	},
+	"include-path": ["src/"]
 }
