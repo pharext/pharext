@@ -207,7 +207,7 @@ class Args implements \ArrayAccess
 		$args = [];
 		foreach ($this->spec as $spec) {
 			$opt = $this->opt($spec[1]);
-			$args[$opt] = $this[$opt];
+			$args[$opt] = is_numeric($spec[0]) ? $this[$spec[0]] : $this[$opt];
 		}
 		return $args;
 	}

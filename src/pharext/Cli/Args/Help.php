@@ -89,15 +89,34 @@ class Help
 
 	function dumpPositional(array $positional) {
 		$dump = " [--]";
+		$conv = [];
 		foreach ($positional as $pos) {
-			if ($pos[3] & Args::REQUIRED) {
-				$dump .= sprintf(" <%s>", $pos[1]);
+			$conv[$pos[0]][] = $pos;
+		}
+		$opts = [];
+		foreach ($conv as $positional) {
+			$args = implode("|", array_column($positional, 1));
+			if ($positional[0][3] & Args::REQUIRED) {
+				$dump .= sprintf(" <%s>", $args);
 			} else {
-				$dump .= sprintf(" [<%s>]", $pos[1]);
+				$dump .= sprintf(" [<%s>]", $args);
 			}
-			if ($pos[3] & Args::MULTI) {
-				$dump .= sprintf(" [<%s>]...", $pos[1]);
+			if ($positional[0][3] & Args::MULTI) {
+				$dump .= sprintf(" [<%s>]...", $args);
 			}
+			/*
+			foreach ($positional as $pos) {
+				if ($pos[3] & Args::REQUIRED) {
+					$dump .= sprintf(" <%s>", $pos[1]);
+				} else {
+					$opts[] = $pos;
+					//$dump .= sprintf(" [<%s>]", $pos[1]);
+				}
+				if ($pos[3] & Args::MULTI) {
+					$dump .= sprintf(" [<%s>]...", $pos[1]);
+				}
+			}
+			 */
 		}
 		return $dump;
 	}
@@ -130,8 +149,9 @@ class Help
 				$dump .= "       ";
 			}
 
-			$dump .= str_repeat(" ", $max-strlen($spec[1])+3*!isset($spec[0]));
-			$dump .= $spec[2];
+			$space = str_repeat(" ", $max-strlen($spec[1])+3*!isset($spec[0]));
+			$dump .= $space;
+			$dump .= str_replace("\n", "\n                        $space", $spec[2]);
 
 			if ($spec[3] & Args::REQUIRED) {
 				$dump .= " (REQUIRED)";
