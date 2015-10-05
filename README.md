@@ -1,6 +1,6 @@
 # pharext
 
-[![Join the chat at https://gitter.im/m6w6/pharext](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/m6w6/pharext?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+[![Join the chat at https://gitter.im/pharext/pharext](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/pharext/pharext?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
 Distribute your PHP extension as self-installable phar executable. See https://pharext.org
 
@@ -86,9 +86,9 @@ A network connection is not needed.
 
 ## Extension maintainers
 
-Download the pharext binary of the [latest release](https://github.com/m6w6/pharext/releases/latest).
+Download the pharext binary of the [latest release](https://github.com/pharext/pharext/releases/latest).
 
-Be aware that you need the [public key](https://github.com/m6w6/pharext/wiki/Public-key) to run official `pharext` releases.
+Be aware that you need the [public key](https://github.com/pharext/pharext/wiki/Public-key) to run official `pharext` releases.
 
 	-----BEGIN PUBLIC KEY-----
 	MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA5x9bwisjDBDV/bwDiju2
@@ -102,5 +102,5 @@ Be aware that you need the [public key](https://github.com/m6w6/pharext/wiki/Pub
 
 Place it as `pharext.pubkey` in the same directory where the `pharext` binary is located. IF you cloned the repository or installed `pharext` through composer, it is already at the right location.
 
-Please have a look at the [wiki](https://github.com/m6w6/pharext/wiki), to learn [how to use](https://github.com/m6w6/pharext/wiki/Usage-of-the-pharext-packager) the pharext installer to package self-installing PHP extensions.
+Please have a look at the [wiki](https://github.com/pharext/pharext/wiki), to learn [how to use](https://github.com/pharext/pharext/wiki/Usage-of-the-pharext-packager) the pharext installer to package self-installing PHP extensions.
 
