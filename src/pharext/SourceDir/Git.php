@@ -3,8 +3,12 @@
 namespace pharext\SourceDir;
 
 use pharext\Cli\Args;
+use pharext\Exception;
+use pharext\ExecCmd;
 use pharext\License;
+use pharext\PackageInfo;
 use pharext\SourceDir;
+use pharext\Tempfile;
 
 /**
  * Extension source directory which is a git repo
@@ -12,6 +16,7 @@ use pharext\SourceDir;
 class Git implements \IteratorAggregate, SourceDir
 {
 	use License;
+	use PackageInfo;
 	
 	/**
 	 * Base directory
@@ -40,7 +45,7 @@ class Git implements \IteratorAggregate, SourceDir
 	 * @return array
 	 */
 	public function getPackageInfo() {
-		return [];
+		return $this->findPackageInfo($this->getBaseDir());
 	}
 
 	/**

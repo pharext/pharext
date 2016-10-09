@@ -4,6 +4,7 @@ namespace pharext\SourceDir;
 
 use pharext\Cli\Args;
 use pharext\License;
+use pharext\PackageInfo;
 use pharext\SourceDir;
 
 use FilesystemIterator;
@@ -16,6 +17,7 @@ use RecursiveIteratorIterator;
 class Basic implements IteratorAggregate, SourceDir
 {
 	use License;
+	use PackageInfo;
 	
 	private $path;
 	
@@ -26,9 +28,13 @@ class Basic implements IteratorAggregate, SourceDir
 	public function getBaseDir() {
 		return $this->path;
 	}
-	
+
+	/**
+	 * @inheritdoc
+	 * @return array
+	 */
 	public function getPackageInfo() {
-		return [];
+		return $this->findPackageInfo($this->getBaseDir());
 	}
 	
 	public function getLicense() {
