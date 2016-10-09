@@ -106,8 +106,8 @@ class Packager implements Command
 
 		try {
 			/* source needs to be evaluated before Cli\Args validation, 
-			 * so e.g. name and version can be overriden and Cli\Args 
-			 * does not complain about missing arguments
+			 * so Cli\Args does not complain about missing arguments,
+			 * which come from SourceDir::getPackageInfo()
 			 */
 			$this->loadSource();
 		} catch (\Exception $e) {
@@ -231,7 +231,10 @@ class Packager implements Command
 			}
 
 			foreach ($this->source->getPackageInfo() as $key => $val) {
-				$this->args->$key = $val;
+				/* do not override command line arguments */
+				if (!isset($this->args->$key)) {
+					$this->args->$key = $val;
+				}
 			}
 		}
 	}
