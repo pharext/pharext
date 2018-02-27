@@ -3,7 +3,6 @@
 namespace pharext;
 
 use Phar;
-use pharext\Exception;
 
 /**
  * The extension packaging command executed by bin/pharext
@@ -196,9 +195,15 @@ class Packager implements Command
 			$source = $this->download($source);
 			$this->cleanup[] = new Task\Cleanup($source);
 		}
-		$source = realpath($source);
-		if (!is_dir($source)) {
-			$source = $this->extract($source);
+		if (!$real = realpath($source)) {
+			$error = "Cannot find source '$source'";
+			if ($this->args->git) {
+				$error .= "; did you forget to specify --branch for a remote git source?";
+			}
+			throw new Exception($error);
+		}
+		if (!is_dir($real)) {
+			$source = $this->extract($real);
 			$this->cleanup[] = new Task\Cleanup($source);
 			
 			if (!$this->args->git) {
