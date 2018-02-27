@@ -5,6 +5,7 @@ namespace pharext;
 trait PackageInfo
 {
 	/**
+	 * @param string $path package root
 	 * @return array
 	 */
 	public function findPackageInfo($path) {
@@ -12,7 +13,7 @@ trait PackageInfo
 			if (!strlen($name = $this->findPackageName($path, $header))) {
 				return [];
 			}
-			if (!$release = $this->findPackageReleaseVersion($path, $header, strtoupper($name))) {
+			if (!$release = $this->findPackageReleaseVersion($path, $header, $name)) {
 				return [];
 			}
 		} catch (Exception $e) {
@@ -41,19 +42,21 @@ trait PackageInfo
 
 	}
 
-	private function findPackageReleaseVersion($path, $header, $uname) {
+	private function findPackageReleaseVersion($path, $header, $name) {
+		$uc_name = strtoupper($name);
 		$cpp_tmp = new Tempfile("cpp");
 		$cpp_hnd = $cpp_tmp->getStream();
 		fprintf($cpp_hnd, "#include \"%s\"\n", $header);
-		fprintf($cpp_hnd, "#if defined(PHP_PECL_%s_VERSION)\n", $uname);
-		fprintf($cpp_hnd, "PHP_PECL_%s_VERSION\n", $uname);
-		fprintf($cpp_hnd, "#elif defined(PHP_%s_VERSION)\n", $uname);
-		fprintf($cpp_hnd, "PHP_%s_VERSION\n", $uname);
-		fprintf($cpp_hnd, "#elif defined(%s_VERSION)\n", $uname);
-		fprintf($cpp_hnd, "%s_VERSION\n", $uname);
+		fprintf($cpp_hnd, "#if defined(PHP_PECL_%s_VERSION)\n", $uc_name);
+		fprintf($cpp_hnd, "PHP_PECL_%s_VERSION\n", $uc_name);
+		fprintf($cpp_hnd, "#elif defined(PHP_%s_VERSION)\n", $uc_name);
+		fprintf($cpp_hnd, "PHP_%s_VERSION\n", $uc_name);
+		fprintf($cpp_hnd, "#elif defined(%s_VERSION)\n", $uc_name);
+		fprintf($cpp_hnd, "%s_VERSION\n", $uc_name);
 		fprintf($cpp_hnd, "#endif\n");
 		fflush($cpp_hnd);
-		$php_inc = (new ExecCmd((PHP_BINARY ?? "php")."-config"))->run([
+		$php_cnf = (defined("PHP_BINARY") ? PHP_BINARY : "php") . "-config";
+		$php_inc = (new ExecCmd($php_cnf))->run([
 			"--includes"
 		])->getOutput();
 		$ext_inc = (new ExecCmd("find"))->run([
