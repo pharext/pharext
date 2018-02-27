@@ -61,7 +61,7 @@ class ExecCmd
 	 * @return int exit status
 	 */
 	private function suExec($command, $verbose = null) {
-		if (!($proc = proc_open($command, [STDIN,["pipe","w"],["pipe","w"]], $pipes))) {
+		if (!($proc = proc_open($command, [STDIN,["pipe","w"],["pipe","w"]], $pipes, getcwd()))) {
 			$this->status = -1;
 			throw new Exception("Failed to run {$command}");
 		}
