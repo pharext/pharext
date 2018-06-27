@@ -18,13 +18,13 @@ class Basic implements IteratorAggregate, SourceDir
 {
 	use License;
 	use PackageInfo;
-	
+
 	private $path;
-	
+
 	public function __construct($path) {
-		$this->path = $path;
+		$this->path = realpath($path);
 	}
-	
+
 	public function getBaseDir() {
 		return $this->path;
 	}
@@ -36,7 +36,7 @@ class Basic implements IteratorAggregate, SourceDir
 	public function getPackageInfo() {
 		return $this->findPackageInfo($this->getBaseDir());
 	}
-	
+
 	public function getLicense() {
 		if (($file = $this->findLicense($this->getBaseDir()))) {
 			return $this->readLicense($file);
@@ -47,7 +47,7 @@ class Basic implements IteratorAggregate, SourceDir
 	public function getArgs() {
 		return [];
 	}
-	
+
 	public function setArgs(Args $args) {
 	}
 
