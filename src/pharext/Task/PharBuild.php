@@ -69,32 +69,33 @@ class PharBuild implements Task
 			(new PharStub($phar, $this->stub))->run($verbose);
 		}
 
-		$phar->buildFromIterator((new Task\BundleGenerator)->run());
+		$phar->buildFromIterator((new Task\BundleGenerator)->run($verbose));
 
 		if ($this->source) {
-			if ($verbose) {
-				$bdir = $this->source->getBaseDir();
-				$blen = strlen($bdir);
-				foreach ($this->source as $index => $file) {
-					if (is_resource($file)) {
-						printf("Packaging %s ...\n", $index);
-						$phar[$index] = $file;
-					} else {
-						printf("Packaging %s ...\n", $index = trim(substr($file, $blen), "/"));
-						$phar->addFile($file, $index);
-					}
+			$bdir = $this->source->getBaseDir();
+			$blen = strlen($bdir);
+			foreach ($this->source as $index => $file) {
+				if (is_resource($file)) {
+					$mode = fstat($file)["mode"] & 07777;
+					$phar[$index] = $file;
+				} else {
+					$mode = stat($file)["mode"] & 07777;
+					$index = trim(substr($file, $blen), "/");
+					$phar->addFile($file, $index);
 				}
-			} else {
-				$phar->buildFromIterator($this->source, $this->source->getBaseDir());
+				if ($verbose) {
+					printf("Packaging %04o %s ...\n", $mode, $index);
+				}
+				$phar[$index]->chmod($mode);
 			}
 		}
 
 		$phar->stopBuffering();
-		
+
 		if (!chmod($temp, fileperms($temp) | 0111)) {
 			throw new Exception;
 		}
-		
+
 		return $temp;
 	}
 }
