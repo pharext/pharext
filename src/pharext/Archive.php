@@ -144,27 +144,28 @@ class Archive implements ArrayAccess, IteratorAggregate
 	}
 
 	private function outFd($path, $flags) {
-			$dirn = dirname($path);
-			if (!is_dir($dirn) && !@mkdir($dirn, 0777, true)) {
+		$dirn = dirname($path);
+		if (!is_dir($dirn) && !@mkdir($dirn, 0777, true)) {
+			throw new Exception;
+		}
+		if (!$fd = @fopen($path, "w")) {
+			throw new Exception;
+		}
+		switch ($flags & self::COMP_FILE_MASK) {
+		case self::COMP_GZ_FILE:
+			if (!@stream_filter_append($fd, "zlib.inflate")) {
 				throw new Exception;
 			}
-			if (!$fd = @fopen($path, "w")) {
+			break;
+		case self::COMP_BZ2_FILE:
+			if (!@stream_filter_append($fd, "bz2.decompress")) {
 				throw new Exception;
 			}
-			switch ($flags & self::COMP_FILE_MASK) {
-			case self::COMP_GZ_FILE:
-				if (!@stream_filter_append($fd, "zlib.inflate")) {
-					throw new Exception;
-				}
-				break;
-			case self::COMP_BZ2_FILE:
-				if (!@stream_filter_append($fd, "bz2.decompress")) {
-					throw new Exception;
-				}
-				break;
-			}
-
+			break;
+		}
+		return $fd;
 	}
+
 	private function readVerified($fd, $len) {
 		if ($len != strlen($data = fread($fd, $len))) {
 			throw new Exception("Unexpected EOF");
