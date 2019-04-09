@@ -3,6 +3,7 @@
 namespace pharext\Cli;
 
 use pharext\Archive;
+use pharext\Metadata;
 
 use Phar;
 
@@ -10,7 +11,7 @@ trait Command
 {
 	/**
 	 * Command line arguments
-	 * @var pharext\Cli\Args
+	 * @var Args
 	 */
 	private $args;
 	
@@ -28,21 +29,25 @@ trait Command
 	 * @return mixed
 	 */
 	public function metadata($key = null) {
-		if (extension_loaded("Phar")) {
-			$running = new Phar(Phar::running(false));
-		} else {
-			$running = new Archive(PHAREXT_PHAR);
-		}
+		try {
+			if (extension_loaded("Phar")) {
+				$running = new Phar(Phar::running(false));
+			} else {
+				$running = new Archive(PHAREXT_PHAR);
+			}
 
-		if ($key === "signature") {
-			$sig = $running->getSignature();
-			return sprintf("%s signature of %s\n%s", 
-				$sig["hash_type"],
-				$this->metadata("name"),
-				chunk_split($sig["hash"], 64, "\n"));
-		}
+			if ($key === "signature") {
+				$sig = $running->getSignature();
+				return sprintf("%s signature of %s\n%s",
+					$sig["hash_type"],
+					$this->metadata("name"),
+					chunk_split($sig["hash"], 64, "\n"));
+			}
 
-		$metadata = $running->getMetadata();
+			$metadata = $running->getMetadata();
+		} catch (\Exception $e) {
+			$metadata = Metadata::all();
+		}
 		if (isset($key)) {
 			return $metadata[$key];
 		}
