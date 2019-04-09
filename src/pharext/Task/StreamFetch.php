@@ -65,7 +65,7 @@ class StreamFetch implements Task
 		}
 		$context = $this->createStreamContext();
 
-		if (!$remote = fopen($this->source, "r", false, $context)) {
+		if (!$remote = @fopen($this->source, "r", false, $context)) {
 			throw new Exception;
 		}
 		

@@ -55,7 +55,7 @@ class PharCompress implements Task
 	 * @return string
 	 */
 	public function run($verbose = false) {
-		if ($verbose) {
+		if ($verbose !== false) {
 			printf("Compressing %s ...\n", basename($this->package->getPath()));
 		}
 		/* stop shebang */

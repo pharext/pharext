@@ -17,7 +17,7 @@ class BundleGenerator implements Task
 	 * @return Generator
 	 */
 	public function run($verbose = false) {
-		if ($verbose) {
+		if ($verbose !== false) {
 			printf("Packaging pharext ... \n");
 		}
 		$rdi = new RecursiveDirectoryIterator(dirname(dirname(__DIR__)));
