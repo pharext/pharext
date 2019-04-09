@@ -2,6 +2,7 @@
 
 namespace pharext\Cli\Args;
 
+use function array_column;
 use pharext\Cli\Args;
 
 class Help
@@ -79,10 +80,32 @@ class Help
 
 		$dump = "";
 		if ($req) {
-			$dump .= sprintf(" [-%s <arg>]", implode("|-", array_column($req, 0)));
+			$short = array_filter($req, function($a) {
+				return is_string($a[0]);
+			});
+			if ($short) {
+				$dump .= sprintf(" [-%s <arg>]", implode("|-", array_column($short, 0)));
+			}
+			$long = array_filter($req, function($a) {
+				return !is_string($a[0]);
+			});
+			if ($long) {
+				$dump .= sprintf(" [--%s <arg>]", implode("|--", array_column($long, 1)));
+			}
 		}
 		if ($opt) {
-			$dump .= sprintf(" [-%s [<arg>]]", implode("|-", array_column($opt, 0)));
+			$short = array_filter($opt, function($a) {
+				return is_string($a[0]);
+			});
+			if ($short) {
+				$dump .= sprintf(" [-%s [<arg>]]", implode("|-", array_column($short, 0)));
+			}
+			$long = array_filter($opt, function($a) {
+				return !is_string($a[0]);
+			});
+			if ($long) {
+				$dump .= sprintf(" [--%s [<arg>]]", implode("|--", array_column($long, 1)));
+			}
 		}
 		return $dump;
 	}
@@ -134,7 +157,7 @@ class Help
 		foreach ($this->args->getSpec() as $spec) {
 			$dump .= "    ";
 			if (is_numeric($spec[0])) {
-				$dump .= sprintf("--   %s ", $spec[1]);
+				$dump .= sprintf("  <%s>  ", $spec[1]);
 			} elseif (isset($spec[0])) {
 				$dump .= sprintf("-%s|", $spec[0]);
 			}
