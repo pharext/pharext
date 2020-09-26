@@ -29,10 +29,10 @@ trait License
 		$pattern = "";
 		$length = strlen($upper);
 		for ($i = 0; $i < $length; ++$i) {
-			if ($lower{$i} === $upper{$i}) {
-				$pattern .= $upper{$i};
+			if ($lower[$i] === $upper[$i]) {
+				$pattern .= $upper[$i];
 			} else {
-				$pattern .= "[" . $upper{$i} . $lower{$i} . "]";
+				$pattern .= "[" . $upper[$i] . $lower[$i] . "]";
 			}
 		}
 		return $pattern;

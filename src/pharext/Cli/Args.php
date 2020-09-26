@@ -128,14 +128,14 @@ class Args implements \ArrayAccess
 		for ($f = false, $p = 0, $i = 0; $i < $argc; ++$i) {
 			$o = $argv[$i];
 
-			if ($o{0} === "-" && strlen($o) > 2 && $o{1} !== "-") {
+			if ($o[0] === "-" && strlen($o) > 2 && $o[1] !== "-") {
 				// multiple short opts, e.g. -vps
 				$argc += strlen($o) - 2;
 				array_splice($argv, $i, 1, array_map(function($s) {
 					return "-$s";
 				}, str_split(substr($o, 1))));
 				$o = $argv[$i];
-			} elseif ($o{0} === "-" && strlen($o) > 2 && $o{1} === "-" && 0 < ($eq = strpos($o, "="))) {
+			} elseif ($o[0] === "-" && strlen($o) > 2 && $o[1] === "-" && 0 < ($eq = strpos($o, "="))) {
 				// long opt with argument, e.g. --foo=bar
 				$argc++;
 				array_splice($argv, $i, 1, [
@@ -150,7 +150,7 @@ class Args implements \ArrayAccess
 			}
 
 			if ($f || !isset($this->spec[$o])) {
-				if ($o{0} !== "-" && isset($this->spec["--$p"])) {
+				if ($o[0] !== "-" && isset($this->spec["--$p"])) {
 					$this[$p] = $o;
 					if (!$this->optIsMulti($p)) {
 						++$p;
@@ -316,7 +316,7 @@ class Args implements \ArrayAccess
 		if (is_numeric($o)) {
 			return "--$o";
 		}
-		if ($o{0} !== '-') {
+		if ($o[0] !== '-') {
 			if (strlen($o) > 1) {
 				$o = "-$o";
 			}

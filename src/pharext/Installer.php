@@ -220,7 +220,7 @@ class Installer implements Command
 		$sudo = isset($this->args->sudo) ? $this->args->sudo : null;
 		$type = $this->metadata("type") ?: "extension";
 
-		$activate = new Task\Activate($temp, $files, $type, $this->args->prefix, $this->args{"common-name"}, $sudo);
+		$activate = new Task\Activate($temp, $files, $type, $this->args->prefix, $this->args["common-name"], $sudo);
 		if (!$activate->run($this->verbosity())) {
 			$this->info("Extension already activated ...\n");
 		}
