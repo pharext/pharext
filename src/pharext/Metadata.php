@@ -5,7 +5,7 @@ namespace pharext;
 class Metadata
 {
 	static function version() {
-		return "@dev-master";
+		return "4.1.3";
 	}
 
 	static function header() {
