@@ -12,7 +12,7 @@ bin/%: build/%.php src/* src/pharext/* src/pharext/*/* src/pharext/*/*/*
 
 test:
 	@echo "Running tests ... "
-	@php -dphar.readonly=0 `which phpunit` tests
+	@php -dphar.readonly=0 `which phpunit5` tests
 	
 clean:
 	rm bin/pharext*
