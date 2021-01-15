@@ -202,6 +202,7 @@ class Packager implements Command
 			}
 			throw new Exception($error);
 		}
+		$source = $real;
 		if (!is_dir($real)) {
 			$source = $this->extract($real);
 			$this->cleanup[] = new Task\Cleanup($source);
